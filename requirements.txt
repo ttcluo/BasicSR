@@ -2,8 +2,8 @@ addict
 future
 lmdb
 numpy>=1.17
-opencv-python
-Pillow
+opencv-python-headless==4.11.0.86
+Pillow==10.4.0
 pyyaml
 requests
 scikit-image
