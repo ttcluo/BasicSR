@@ -42,6 +42,9 @@ datasets:
     cache_data: True
     io_backend:
       type: disk
+
+    num_frame: -1  # not needed
+
     # name: Vimeo90K
     # type: Vimeo90KDataset
     # dataroot_gt: /media/disk/silence/data/vimeo_septuplet/sequences
