@@ -1,5 +1,5 @@
 # general settings
-name: BasicVSR_V4_1e-6_100k_b6_stage5
+name: IBRN_BasicVSR_V4_1e-6_100k_b6_stage5
 experiments_root: exp_video2/vimeo90k_retrain2
 model_type: BasicVSRModel
 scale: 4
@@ -39,6 +39,7 @@ datasets:
     type: VideoRecurrentTestDataset #原VidTestDataset
     dataroot_gt: ../vsr_dataset/Vid4/GT
     dataroot_lq: ../vsr_dataset/Vid4/BIx4
+    cache_data: True
     io_backend:
       type: disk
     # name: Vimeo90K
