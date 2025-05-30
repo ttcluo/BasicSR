@@ -10,7 +10,7 @@ manual_seed: 10
 datasets:
   train:
     name: Vimeo90K
-    type: Vimeo90KDataset
+    type: Vimeo90KRecurrentDataset  #原 Vimeo90KDataset
     dataroot_gt: ../vsr_dataset/vimeo90k/GT
     dataroot_lq: ../vsr_dataset/vimeo90k/BIx4
     meta_info_file: ../vsr_dataset/vimeo90k/meta_info_Vimeo90K_train_GT.txt
@@ -22,7 +22,7 @@ datasets:
     gt_size: 256
     interval_list: [1]
     random_reverse: false
-    use_flip: true
+    use_hflip: true
     use_rot: true
 
     # data loader
@@ -35,7 +35,7 @@ datasets:
 
   val:
     name: Vid4
-    type: VidTestDataset
+    type: VideoRecurrentTestDataset #原VidTestDataset
     dataroot_gt: ../vsr_dataset/Vid4/GT
     dataroot_lq: ../vsr_dataset/Vid4/BIx4
     io_backend:
