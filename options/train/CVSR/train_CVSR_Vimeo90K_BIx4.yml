@@ -39,7 +39,7 @@ datasets:
     name: Vid4
     type: VideoRecurrentTestDataset
     dataroot_gt: ../vsr_dataset/Vid4/GT
-    dataroot_lq: ../vsr_dataset/BIx4
+    dataroot_lq: ../vsr_dataset/Vid4/BIx4
 
     cache_data: True
     io_backend:
