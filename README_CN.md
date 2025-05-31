@@ -156,3 +156,7 @@ For detailed instructions refer to [docs/INSTALL.md](docs/INSTALL.md).
   <img src="https://user-images.githubusercontent.com/52127135/172553058-6cf32e10-2959-42dd-b26a-f802f09343b0.png"  height="300">  &emsp;
   <img src="https://user-images.githubusercontent.com/17445847/139572512-8e192aac-00fa-432b-ac8e-a33026b019df.png"  height="300">
 </p>
+
+## 常用命令
+
+rsync -avzP -e "ssh " root@20.66.31.3:/data/luochuan/CVSR/mmcv-2.1.0-cp38-cp38-manylinux1_x86_64.whl /data/luochuan/
