@@ -6,7 +6,7 @@ from basicsr.utils.registry import ARCH_REGISTRY
 # from .arch_util import ResidualBlockNoBN, flow_warp, make_layer
 # from .edvr_arch import PCDAlignment, TSAFusion
 # from .spynet_arch import SpyNet
-from channel_diversity import *
+from .channel_diversity import *
 
 from basicsr.archs.arch_util import ResidualBlockNoBN, flow_warp, make_layer
 from basicsr.archs.edvr_arch import PCDAlignment, TSAFusion

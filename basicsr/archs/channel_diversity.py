@@ -2,6 +2,7 @@ import math
 import torch
 import torch.nn as nn
 
+# MADNet 使用
 def get_freq_indices(method):
     assert method in ['top1','top2','top4','top8','top16','top32',
                       'bot1','bot2','bot4','bot8','bot16','bot32',
