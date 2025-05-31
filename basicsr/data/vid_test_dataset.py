@@ -8,6 +8,7 @@ from basicsr.data.data_util import read_img_seq
 from basicsr.utils import get_root_logger, scandir
 from basicsr.utils.registry import DATASET_REGISTRY
 
+# IBRN使用
 
 @DATASET_REGISTRY.register()
 class VidTestDataset(data.Dataset):

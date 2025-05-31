@@ -16,6 +16,7 @@ metric_module = importlib.import_module('basicsr.metrics')
 
 logger = logging.getLogger('basicsr')
 
+# IBRN使用
 @MODEL_REGISTRY.register()
 class BasicVSRModel(VideoBaseModel):
     """BasicVSR Model.

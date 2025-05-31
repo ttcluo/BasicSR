@@ -19,9 +19,9 @@ except ImportError:
     ModulatedDeformConvPackNOInnerOffset = object
     modulated_deform_conv = None
 
-import torch.fft 
+import torch.fft
 
-
+# IBRN使用
 @torch.no_grad()
 def default_init_weights(module_list, scale=1, bias_fill=0, **kwargs):
     """Initialize network weights.
@@ -70,7 +70,7 @@ def make_layer(basic_block, num_basic_block, drop=False, **kwarg):
 
     if drop:
         layers.append(nn.Dropout(0.1))
-        
+
     layers.append(basic_block(**kwarg))
     return nn.Sequential(*layers)
 
@@ -150,7 +150,7 @@ class AttentionGate(nn.Module):
     def forward(self, x):
         x_compress = self.compress(x)
         x_out = self.conv(x_compress)
-        scale = torch.sigmoid_(x_out) 
+        scale = torch.sigmoid_(x_out)
         return x * scale
 
 class TripletAttention(nn.Module):
@@ -185,7 +185,7 @@ class channel_attn(nn.Module):
     def forward(self, x):
         x_compress = self.compress(x)
         x_out = self.conv(x_compress)
-        scale = torch.sigmoid_(x_out) 
+        scale = torch.sigmoid_(x_out)
         return x * scale
 
 
@@ -514,7 +514,7 @@ class SpectralConv2d(nn.Module):
         super(SpectralConv2d, self).__init__()
 
         """
-        2D Fourier layer. It does FFT, linear transform, and Inverse FFT.    
+        2D Fourier layer. It does FFT, linear transform, and Inverse FFT.
         """
 
         # self.fc0_r = nn.Conv2d(num_feat, num_feat, 1, 1, 0)
@@ -542,14 +542,14 @@ class SpectralConv2d(nn.Module):
         # x_ft = self.fc0(x_ft)
         # x_ft = self.fc1(F.gelu(x_ft))
         # x_ft = self.fc2(x_ft)
-        
-        # # 方案2：实部和虚部分别过卷积 
+
+        # # 方案2：实部和虚部分别过卷积
         # real = self.fc0_r(x_ft.real)
         # imag = self.fc0_i(x_ft.imag)
-        
+
         # real = self.fc1_r(F.gelu(x_ft.real))
         # imag = self.fc1_i(F.gelu(x_ft.imag))
-        
+
         # x_ft = torch.cat([real * torch.cos(imag), real * torch.sin(imag)], dim=1)
         # x_ft = self.fc2(x_ft)
 
@@ -560,7 +560,7 @@ class SpectralConv2d(nn.Module):
         print(f"x:{x.shape}")
         batch = x.shape[0]
         ffted = torch.fft.rfftn(x, dim=(-2, -1))
-        
+
         print(f"ffted:{ffted.shape}")
         ffted = torch.stack((ffted.real, ffted.imag), dim=-1)
         ffted = ffted.permute(0, 1, 4, 2, 3).contiguous()  # (batch, c, 2, h, w/2+1)
@@ -592,7 +592,7 @@ class SpectralConv2d(nn.Module):
 #     Returns:
 #         (Tensor) Convolved tensor
 #     """
-#     # 1. Pad the input signal & kernel tensors                                                                                                                                                                            
+#     # 1. Pad the input signal & kernel tensors
 #     signal = f.pad(signal, [padding, padding])
 #     kernel_padding = [0, signal.size(-1) - kernel.size(-1)]
 #     padded_kernel = f.pad(kernel, kernel_padding)
@@ -627,10 +627,10 @@ class FNO(nn.Module):
         2. 4 layers of the integral operators u' = (W + K)(u).
             W defined by self.w; K defined by self.conv .
         3. Project from the channel space to the output space by self.fc1 and self.fc2 .
-        
+
         input: the solution of the coefficient function and locations (a(x, y), x, y)
         input shape: (batchsize, x=s, y=s, c=3)
-        output: the solution 
+        output: the solution
         output shape: (batchsize, x=s, y=s, c=1)
         """
 
@@ -690,7 +690,7 @@ class FlowEstimate_block(nn.Module):
         self.convblock = nn.Sequential(*conv_block)
 
         self.conv1 = nn.ConvTranspose2d(hidden_feat, 4, 4, 2, 1)
-    
+
     def forward(self, x):
         # if self.scale != 1:
         #     x = F.interpolate(x, scale_factor= 1. / self.scale, mode="bilinear", align_corners=False)
@@ -711,7 +711,7 @@ class FlowEstimate(nn.Module):
         self.block0 = FlowEstimate_block(in_feat=in_feat*2, hidden_feat=240, scale=4)
         self.block1 = FlowEstimate_block(in_feat=in_feat*2+4, hidden_feat=150, scale=2)
         self.block2 = FlowEstimate_block(in_feat=in_feat*2+4, hidden_feat=90, scale=2)
-    
+
     def forward(self, x0, x1):
         "image vision flow estimate"
 
@@ -768,7 +768,7 @@ class LF_Block(nn.Module):
             default_init_weights([self.conv1, self.conv2, self.conv3, self.conv4], 0.1)
 
     def forward(self, x):
-        
+
         yn = x
 
         G_yn = self.relu1(self.conv1(G_yn))
@@ -777,7 +777,7 @@ class LF_Block(nn.Module):
         Gyn_1 = self.relu1(self.conv2(yn_1))
         yn_2 = Gyn_1*self.scale2
         yn_2 = yn_2 + yn
-        
+
         Gyn_2 = self.relu3(self.conv3(Gyn_2))
         yn_3 = Gyn_2*self.scale3
         yn_3 = yn_3 + yn_1
@@ -815,7 +815,7 @@ class PreAct_LF_Block(nn.Module):
             default_init_weights([self.conv1, self.conv2, self.conv3, self.conv4], 0.1)
 
     def forward(self, x):
-        
+
         yn = x
         G_yn = self.relu1(x)
         G_yn = self.conv1(G_yn)
@@ -834,7 +834,7 @@ class PreAct_LF_Block(nn.Module):
         out = yn_4 + yn_2
         return out
 
-        
+
 
 class NetD(nn.Module):
     def __init__(self):
@@ -847,20 +847,20 @@ class NetD(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
 
             # state size. (64) x 128 x 128
-            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=4, stride=2, padding=1, bias=True),            
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=4, stride=2, padding=1, bias=True),
             #nn.InstanceNorm2d(64),
             nn.LeakyReLU(0.2, inplace=True),
 
             # state size. (64) x 44 x 64
-            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1, bias=True),            
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1, bias=True),
             #nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2, inplace=True),
-            
+
             # state size. (128) x 64 x 64
             nn.Conv2d(in_channels=128, out_channels=128, kernel_size=4, stride=2, padding=1, bias=True),
             #nn.InstanceNorm2d(128),
             nn.LeakyReLU(0.2, inplace=True),
-        
+
             # state size. (128) x 32 x 32
             nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1, bias=True),
             #nn.BatchNorm2d(256),
@@ -872,22 +872,22 @@ class NetD(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
 
             # state size. (256) x 16 x 16
-            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, stride=1, padding=1, bias=False),            
+            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, stride=1, padding=1, bias=False),
             #nn.BatchNorm2d(512),
             nn.LeakyReLU(0.2, inplace=True),
 
             # state size. (512) x 16 x 16
-            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=4, stride=2, padding=1, bias=False),            
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=4, stride=2, padding=1, bias=False),
             #nn.InstanceNorm2d(512),
             nn.LeakyReLU(0.2, inplace=True),
-            
+
             # state size. (512) x 8 x 8
-            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, stride=1, padding=1, bias=False),            
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, stride=1, padding=1, bias=False),
             #nn.BatchNorm2d(512),
             nn.LeakyReLU(0.2, inplace=True),
 
             # state size. (512) x 8 x 8
-            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=4, stride=2, padding=1, bias=False),            
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=4, stride=2, padding=1, bias=False),
             #nn.InstanceNorm2d(512),
             nn.LeakyReLU(0.2, inplace=True),
         )
