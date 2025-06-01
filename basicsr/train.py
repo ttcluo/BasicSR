@@ -140,6 +140,9 @@ def train_pipeline(root_path):
         prefetcher = CPUPrefetcher(train_loader)
     elif prefetch_mode == 'cuda':
         prefetcher = CUDAPrefetcher(train_loader, opt)
+        prefetcher.pcie_monitor = opt['train'].get('pcie_monitor', False)
+        prefetcher.reset()
+        logger.info('Initialized CUDA prefetcher with PCIe monitoring')
         logger.info(f'Use {prefetch_mode} prefetch dataloader')
         if opt['datasets']['train'].get('pin_memory') is not True:
             raise ValueError('Please set pin_memory=True for CUDAPrefetcher.')

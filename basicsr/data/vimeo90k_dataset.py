@@ -139,12 +139,23 @@ class Vimeo90KRecurrentDataset(Vimeo90KDataset):
     def __init__(self, opt):
         super(Vimeo90KRecurrentDataset, self).__init__(opt)
 
+        # 添加 PCIe 优化参数
+        self.force_cpu_copy = opt.get('force_cpu_copy', True)
+        self.pin_memory = opt.get('pin_memory', True)
+
         self.flip_sequence = opt['flip_sequence']
         self.neighbor_list = [1, 2, 3, 4, 5, 6, 7]
+
+         # 添加调试计数器
+        self.data_counter = 0
 
     def __getitem__(self, index):
         if self.file_client is None:
             self.file_client = FileClient(self.io_backend_opt.pop('type'), **self.io_backend_opt)
+
+        # 添加随机种子以确保分布式训练一致性
+        if hasattr(self, 'manual_seed'):
+            torch.manual_seed(self.manual_seed + index)
 
         # random reverse
         if self.random_reverse and random.random() < 0.5:
@@ -189,6 +200,28 @@ class Vimeo90KRecurrentDataset(Vimeo90KDataset):
         if self.flip_sequence:  # flip the sequence: 7 frames to 14 frames
             img_lqs = torch.cat([img_lqs, img_lqs.flip(0)], dim=0)
             img_gts = torch.cat([img_gts, img_gts.flip(0)], dim=0)
+
+        # ===== PCIe 优化 1: 确保数据在 CPU 上 =====
+        if self.force_cpu_copy:
+            if img_lqs.device.type != 'cpu':
+                img_lqs = img_lqs.cpu()
+            if img_gts.device.type != 'cpu':
+                img_gts = img_gts.cpu()
+
+        # ===== PCIe 优化 2: 显式内存 pinning =====
+        if self.pin_memory:
+            if not img_lqs.is_pinned():
+                img_lqs = img_lqs.pin_memory()
+            if not img_gts.is_pinned():
+                img_gts = img_gts.pin_memory()
+
+        # 调试输出
+        self.data_counter += 1
+        if self.data_counter % 1000 == 0:
+            print(f"Dataset: Processed {self.data_counter} samples | "
+                  f"LQ device: {img_lqs.device}, pinned: {img_lqs.is_pinned()} | "
+                  f"GT device: {img_gts.device}, pinned: {img_gts.is_pinned()}")
+
 
         # img_lqs: (t, c, h, w)
         # img_gt: (c, h, w)

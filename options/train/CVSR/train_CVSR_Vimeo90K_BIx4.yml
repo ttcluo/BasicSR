@@ -33,6 +33,7 @@ datasets:
     num_worker_per_gpu: 6
     batch_size_per_gpu: 24
     dataset_enlarge_ratio: 200
+    force_cpu_copy: true  # 确保数据在 CPU 上
     prefetch_mode: cuda
     pin_memory: true
 
@@ -63,6 +64,7 @@ path:
 
 # training settings
 train:
+  pcie_monitor: true  # 启用 PCIe 带宽监控
   ema_decay: 0.999
   optim_g:
     type: Adam

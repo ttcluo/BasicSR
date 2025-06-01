@@ -1,6 +1,7 @@
 import queue as Queue
 import threading
 import torch
+import time
 from torch.utils.data import DataLoader
 
 
@@ -97,26 +98,81 @@ class CUDAPrefetcher():
         self.opt = opt
         self.stream = torch.cuda.Stream()
         self.device = torch.device('cuda' if opt['num_gpu'] != 0 else 'cpu')
+
+         # PCIe 监控参数
+        self.pcie_monitor = opt.get('pcie_monitor', False)
+        self.rx_total = 0  # 接收数据总量 (bytes)
+        self.tx_total = 0  # 发送数据总量 (bytes)
+        self.start_time = time.time()
+        self.batch_counter = 0
+
+        # 预加载第一个batch
         self.preload()
 
     def preload(self):
         try:
-            self.batch = next(self.loader)  # self.batch is a dict
+            self.batch = next(self.loader)  # self.batch 是字典
+
+            # 确保在正确的 CUDA 流中操作
+            with torch.cuda.stream(self.stream):
+                # 处理字典中的所有张量
+                for k, v in self.batch.items():
+                    if torch.is_tensor(v):
+                        # ===== PCIe 优化 1: 确保数据在 CPU 上 =====
+                        if v.device.type != 'cpu':
+                            v = v.cpu()
+
+                        # ===== PCIe 优化 2: 确保数据是 pinned memory =====
+                        if not v.is_pinned():
+                            v = v.pin_memory()
+
+                        # ===== PCIe 优化 3: 异步传输到 GPU =====
+                        self.batch[k] = v.to(device=self.device, non_blocking=True)
+
+                        # 记录 PCIe 传输量
+                        if self.pcie_monitor:
+                            self.rx_total += v.element_size() * v.nelement()
+
+            # 增加计数器
+            self.batch_counter += 1
+
         except StopIteration:
             self.batch = None
-            return None
-        # put tensors to gpu
-        with torch.cuda.stream(self.stream):
-            for k, v in self.batch.items():
-                if torch.is_tensor(v):
-                    self.batch[k] = self.batch[k].to(device=self.device, non_blocking=True)
 
     def next(self):
+        # 等待当前流完成
         torch.cuda.current_stream().wait_stream(self.stream)
         batch = self.batch
+
+        # 预取下一个 batch
         self.preload()
+
+        # 打印 PCIe 带宽信息
+        if self.pcie_monitor and batch is not None:
+            elapsed = time.time() - self.start_time
+            if elapsed > 1:  # 至少1秒后报告
+                rx_gbps = (self.rx_total / elapsed) / (1024 ** 3)
+                tx_gbps = (self.tx_total / elapsed) / (1024 ** 3)
+
+                print(f"[Prefetcher] Batch {self.batch_counter} | "
+                      f"PCIe带宽: RX={rx_gbps:.2f} GB/s, TX={tx_gbps:.2f} GB/s | "
+                      f"总传输: {self.rx_total/(1024**2):.1f} MB")
+
+                # 重置计数器
+                self.rx_total = 0
+                self.tx_total = 0
+                self.start_time = time.time()
+
         return batch
 
     def reset(self):
         self.loader = iter(self.ori_loader)
+        self.rx_total = 0
+        self.tx_total = 0
+        self.start_time = time.time()
+        self.batch_counter = 0
         self.preload()
+
+        # 打印重置信息
+        if self.pcie_monitor:
+            print("[Prefetcher] Reset with PCIe monitoring enabled")
