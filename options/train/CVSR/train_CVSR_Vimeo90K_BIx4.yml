@@ -33,7 +33,8 @@ datasets:
     num_worker_per_gpu: 8
     batch_size_per_gpu: 8
     dataset_enlarge_ratio: 200
-    prefetch_mode: ~
+    prefetch_mode: cuda
+    pin_memory: true
 
   val:
     name: Vid4
