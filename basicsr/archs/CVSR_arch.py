@@ -21,23 +21,34 @@ class CVSR(nn.Module):
         super().__init__()
         self.num_feat = num_feat
 
-        # alignment
+        # alignment 光流对齐模块 - 使用SpyNet计算帧间运动
         self.spynet = SpyNet(spynet_path)
         # for p in self.spynet.parameters():
         #     p.requires_grad = False
 
-        # propagation
+        # propagation === 双向传播分支 ===
+        # 后向传播分支 (处理逆序帧)
         self.backward_trunk = ConvResidualBlocks(num_feat + 3, num_feat, num_block)
+        # 前向传播分支 (处理正序帧)
         self.forward_trunk = ConvResidualBlocks(num_feat + 3, num_feat, num_block)
+
+        # === 复数特征构建模块 ===
+        # 1x1卷积压缩双向特征通道 (用于构建虚部)
         self.compress = nn.Conv2d(2*num_feat,num_feat,1,1,0)
+        # 残差块处理压缩后的特征 (虚部生成)
         self.resblock1 = ResidualBlockNoBN(num_feat)
+
+        # === 复数注意力机制 ===
+        # 3D卷积+池化提取复数空间注意力
         self.conv3D = nn.Sequential(
-            nn.Conv3d(num_feat,num_feat,(3,3,3),(1,1,1),(1,1,1)),
-            nn.PReLU(),
-            nn.Conv3d(num_feat, num_feat, (2, 1, 1), (2, 1, 1), (0,0,0)),
-            nn.AdaptiveAvgPool3d(1)
+            nn.Conv3d(num_feat,num_feat,(3,3,3),(1,1,1),(1,1,1)),  # 3D空间卷积
+            nn.PReLU(), # 参数化ReLU
+            nn.Conv3d(num_feat, num_feat, (2, 1, 1), (2, 1, 1), (0,0,0)), # 降维卷积
+            nn.AdaptiveAvgPool3d(1) # 全局池化生成注意力向量
         )
+        # 实部增强卷积
         self.convreal = nn.Conv2d(num_feat,num_feat,3,1,1,bias=True)
+        # 虚部增强卷积
         self.convimg = nn.Conv2d(num_feat, num_feat, 3, 1, 1, bias=True)
 
         #self.unrelationalmapping = nn.Conv2d(num_feat*2,num_feat*2,3,1,1)
@@ -67,19 +78,34 @@ class CVSR(nn.Module):
         #     nn.Conv2d(96, 64, 1, padding=0, bias=True),
         # )
 
+        # === 重建模块 ===
+        # 特征融合 (复数特征→实数空间)
         self.fusion = nn.Conv2d(num_feat * 2, num_feat, 1, 1, 0, bias=True)
+        # 第一次上采样卷积
         self.upconv1 = nn.Conv2d(num_feat, num_feat * 4, 3, 1, 1, bias=True)
+        # 第二次上采样卷积
         self.upconv2 = nn.Conv2d(num_feat, 64 * 4, 3, 1, 1, bias=True)
+        # 高分辨率特征精炼
         self.conv_hr = nn.Conv2d(64, 64, 3, 1, 1)
+        # 最终输出层
         self.conv_last = nn.Conv2d(64, 3, 3, 1, 1)
 
+        # 像素重排上采样 (×2)
         self.pixel_shuffle = nn.PixelShuffle(2)
 
-        # activation functions
+        # activation functions 激活函数
         self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
 
 
     def get_flow(self, x):
+        """计算前后向光流
+
+        Args:
+            x (Tensor): 输入视频序列 [b, n, c, h, w]
+
+        Returns:
+            Tuple: 前向光流和后向光流
+        """
         b, n, c, h, w = x.size()
 
         x_1 = x[:, :-1, :, :, :].reshape(-1, c, h, w)
@@ -91,24 +117,40 @@ class CVSR(nn.Module):
         return flows_forward, flows_backward
 
     def forward(self, x):
+        """前向传播
+
+        Args:
+            x (Tensor): 低分辨率输入序列 [b, n, c, h, w]
+
+        Returns:
+            Tensor: 高分辨率输出序列 [b, n, c, 4h, 4w]
+        """
+
+        # 步骤1: 计算光流
         flows_forward, flows_backward = self.get_flow(x)
         b, n, _, h, w = x.size()
 
-        # backward branch
+        # backward branch === 后向传播分支 (逆序处理) ===
         out_pre = []
-        out_l = []
-        feat_prop = x.new_zeros(b, self.num_feat, h, w)
+        out_l = [] # 存储后向特征
+        feat_prop = x.new_zeros(b, self.num_feat, h, w) # 初始化特征
+
+        # 从最后一帧向前处理
         for i in range(n - 1, -1, -1):
-            x_i = x[:, i, :, :, :]
+            x_i = x[:, i, :, :, :] # 当前帧
+            # 光流对齐 (除第一帧外)
             if i < n - 1:
                 flow = flows_backward[:, i, :, :, :]
                 feat_prop = flow_warp(feat_prop, flow.permute(0, 2, 3, 1))
-            feat_prop = torch.cat([x_i, feat_prop], dim=1)
-            feat_prop = self.backward_trunk(feat_prop)
+
+             # 特征提取
+            feat_prop = torch.cat([x_i, feat_prop], dim=1) # 拼接当前帧和传播特征
+            feat_prop = self.backward_trunk(feat_prop) # 通过残差块
+            # 存储特征 (按正序插入)
             out_l.insert(0, feat_prop)
 
-        # forward branch
-        feat_prop = torch.zeros_like(feat_prop)
+        # forward branch === 前向传播分支 (正序处理) ===
+        feat_prop = torch.zeros_like(feat_prop)  # 重置特征
         for i in range(0, n):
             x_i = x[:, i, :, :, :]
             if i > 0:
@@ -126,19 +168,34 @@ class CVSR(nn.Module):
             # att = self.mlp(z1)
             # c1 = real*torch.cos(att)
             # c2 = img*torch.sin(att)
+
+            # === 复数特征构建 ===
+            # 实部 = 前向特征 - 后向特征
             real = feat_prop - out_l[i]
+            # 虚部 = 融合(前向+后向) → 压缩 → 残差块
             img = self.resblock1(self.compress(torch.cat([feat_prop, out_l[i]], dim=1)))
-            sreal = real.unsqueeze(2)
-            simg = img.unsqueeze(2)
-            newf = torch.cat([sreal,simg],dim=2)
-            att = self.conv3D(newf)
-            att = att.squeeze(2)
-            attcos = torch.cos(att)
-            attsin = torch.sin(att)
-            real = real * attcos
-            img = img *attsin
-            attreal = real+self.convreal(real)
-            attimg = img+self.convimg(img)
+
+            # === 复数注意力机制 ===
+            # 构建3D特征张量 [b, c, 2, h, w]
+            sreal = real.unsqueeze(2) # 实部增加维度
+            simg = img.unsqueeze(2) # 虚部增加维度
+            newf = torch.cat([sreal,simg],dim=2) # 拼接实部和虚部
+
+            # 3D卷积提取注意力
+            att = self.conv3D(newf) # [b, c, 1, 1, 1]
+            att = att.squeeze(2) # 降维 [b, c, 1, 1]
+
+            # 欧拉公式旋转 (复数乘法)
+            attcos = torch.cos(att) # 旋转因子实部
+            attsin = torch.sin(att) # 旋转因子虚部
+            real = real * attcos # 实部旋转
+            img = img *attsin # 虚部旋转
+
+            # 增强旋转后特征
+            attreal = real+self.convreal(real) # 实部增强
+            attimg = img+self.convimg(img)  # 虚部增强
+
+            # 合并旋转后的复数特征
             out = torch.cat([attreal, attimg], dim=1)
             #out = self.resblock2(out)
 
@@ -176,12 +233,16 @@ class CVSR(nn.Module):
             # k2 = -img/(torch.abs(2*out_pre[i])+0.0001)
             # img = k1*out_pre[i]+k2*preforward
 
-            # upsample
-
+            # upsample === 超分辨率重建 ===
+            # 特征融合 (复数→实数)
             out = self.lrelu(self.fusion(out))
+            # 第一次上采样 (×2)
             out = self.lrelu(self.pixel_shuffle(self.upconv1(out)))
+            # 第二次上采样 (×2 → 总计×4)
             out = self.lrelu(self.pixel_shuffle(self.upconv2(out)))
+            # 高分辨率精炼
             out = self.lrelu(self.conv_hr(out))
+            # 最终输出
             out = self.conv_last(out)
 
             #lastoutput = out
@@ -195,7 +256,17 @@ class CVSR(nn.Module):
 
 
 class ConvResidualBlocks(nn.Module):
+    """卷积残差块模块
 
+    包含：
+    1. 初始卷积层
+    2. 多个残差块 (无BN)
+
+    Args:
+        num_in_ch (int): 输入通道数
+        num_out_ch (int): 输出通道数
+        num_block (int): 残差块数量
+    """
     def __init__(self, num_in_ch=3, num_out_ch=64, num_block=15):
         super().__init__()
         self.main = nn.Sequential(
@@ -234,6 +305,15 @@ class ConvResidualBlocks(nn.Module):
 @ARCH_REGISTRY.register()
 class CIconVSR(nn.Module):
     """IconVSR, proposed also in the BasicVSR paper
+    改进的IconVSR模型，引入复数域特征表示和3D注意力机制
+
+    Args:
+        num_feat (int): 特征通道数，默认64
+        num_block (int): 残差块数量，默认15
+        keyframe_stride (int): 关键帧间隔，默认5
+        temporal_padding (int): 时间维度填充，默认2
+        spynet_path (str): SpyNet预训练权重路径
+        edvr_path (str): EDVR预训练权重路径
     """
 
     def __init__(self,
@@ -249,38 +329,51 @@ class CIconVSR(nn.Module):
         self.temporal_padding = temporal_padding
         self.keyframe_stride = keyframe_stride
 
-        # keyframe_branch
+        # 关键帧特征提取器 (EDVR架构)
         self.edvr = EDVRFeatureExtractor(temporal_padding * 2 + 1, num_feat, edvr_path)
-        # alignment
+
+        # 光流估计网络 (SpyNet)
         self.spynet = SpyNet(spynet_path)
 
-        # propagation
+        # === 传播分支 ===
+        # 后向融合：拼接特征+关键帧特征
         self.backward_fusion = nn.Conv2d(2 * num_feat, num_feat, 3, 1, 1, bias=True)
+        # 后向主干：输入(LR帧+传播特征)
         self.backward_trunk = ConvResidualBlocks(num_feat + 3, num_feat, num_block)
 
+        # 前向融合：拼接特征+关键帧特征
         self.forward_fusion = nn.Conv2d(2 * num_feat, num_feat, 3, 1, 1, bias=True)
+        # 前向主干：输入(LR帧+后向特征+传播特征)
         self.forward_trunk = ConvResidualBlocks(2 * num_feat + 3, num_feat, num_block)
-        ##### complex
-        self.compress = nn.Conv2d(2*num_feat,num_feat,1,1,0)
-        self.resblock1 = ResidualBlockNoBN(num_feat)
-        self.conv3D = nn.Sequential(
-            nn.Conv3d(num_feat,num_feat,(3,3,3),(1,1,1),(1,1,1)),
-            nn.PReLU(),
-            nn.Conv3d(num_feat, num_feat, (2, 1, 1), (2, 1, 1), (0,0,0)),
-            nn.AdaptiveAvgPool3d(1)
-        )
-        self.convreal = nn.Conv2d(num_feat,num_feat,3,1,1,bias=True)
-        self.convimg = nn.Conv2d(num_feat, num_feat, 3, 1, 1, bias=True)
-        ######
-        # reconstruction
-        self.upconv1 = nn.Conv2d(num_feat, num_feat * 4, 3, 1, 1, bias=True)
-        self.upconv2 = nn.Conv2d(num_feat, 64 * 4, 3, 1, 1, bias=True)
-        self.conv_hr = nn.Conv2d(64, 64, 3, 1, 1)
-        self.conv_last = nn.Conv2d(64, 3, 3, 1, 1)
 
+        # === 复数域处理核心 ===
+        # 特征压缩：双向特征拼接后降维
+        self.compress = nn.Conv2d(2*num_feat, num_feat, 1, 1, 0)
+        # 虚部生成：残差块处理压缩特征
+        self.resblock1 = ResidualBlockNoBN(num_feat)
+
+        # 3D复数注意力机制
+        self.conv3D = nn.Sequential(
+            nn.Conv3d(num_feat, num_feat, (3, 3, 3), (1, 1, 1), (1, 1, 1)),  # 3D空间-时间卷积
+            nn.PReLU(),  # 参数化ReLU激活
+            nn.Conv3d(num_feat, num_feat, (2, 1, 1), (2, 1, 1), (0, 0, 0)),  # 降维卷积
+            nn.AdaptiveAvgPool3d(1)  # 全局池化得到注意力向量
+        )
+        # 实部增强卷积
+        self.convreal = nn.Conv2d(num_feat, num_feat, 3, 1, 1, bias=True)
+        # 虚部增强卷积
+        self.convimg = nn.Conv2d(num_feat, num_feat, 3, 1, 1, bias=True)
+
+        # === 重建模块 ===
+        self.upconv1 = nn.Conv2d(num_feat, num_feat * 4, 3, 1, 1, bias=True)  # 首次上采样卷积
+        self.upconv2 = nn.Conv2d(num_feat, 64 * 4, 3, 1, 1, bias=True)  # 二次上采样卷积
+        self.conv_hr = nn.Conv2d(64, 64, 3, 1, 1)  # 高分辨率特征精炼
+        self.conv_last = nn.Conv2d(64, 3, 3, 1, 1)  # 最终输出卷积
+
+        # 像素重排上采样器 (2倍上采样)
         self.pixel_shuffle = nn.PixelShuffle(2)
 
-        # activation functions
+        # 激活函数
         self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
 
     def pad_spatial(self, x):
