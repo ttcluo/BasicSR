@@ -160,3 +160,5 @@ For detailed instructions refer to [docs/INSTALL.md](docs/INSTALL.md).
 ## 常用命令
 
 rsync -avzP -e "ssh " root@20.66.31.3:/data/luochuan/CVSR/mmcv-2.1.0-cp38-cp38-manylinux1_x86_64.whl /data/luochuan/
+
+PORT=4321 CUDA_VISIBLE_DEVICES=0,1,2,3 numactl --cpunodebind=0 --membind=0     ./scripts/dist_train1.sh 4 options/train/CVSR/train_CVSR_Vimeo90K_BIx4.yml

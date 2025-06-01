@@ -30,8 +30,8 @@ datasets:
 
     # data loader
     use_shuffle: true
-    num_worker_per_gpu: 8
-    batch_size_per_gpu: 8
+    num_worker_per_gpu: 6
+    batch_size_per_gpu: 24
     dataset_enlarge_ratio: 200
     prefetch_mode: cuda
     pin_memory: true
@@ -110,6 +110,6 @@ logger:
 # dist training settings
 dist_params:
   backend: nccl
-  port: 29500
+  port: 4321
 
 find_unused_parameters: true
