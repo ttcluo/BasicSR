@@ -463,10 +463,11 @@ class CIconVSR(nn.Module):
                 feat_prop = torch.cat([feat_prop, feats_keyframe[i]], dim=1)
                 feat_prop = self.forward_fusion(feat_prop)
 
+            # 主干网络（融合后向特征）
             feat_prop = torch.cat([x_i, out_l[i], feat_prop], dim=1)
             feat_prop = self.forward_trunk(feat_prop)
 
-
+            # === 复数域处理（同CVSR）===
             real = feat_prop - out_l[i]
             img = self.resblock1(self.compress(torch.cat([feat_prop, out_l[i]], dim=1)))
             sreal = real.unsqueeze(2)
@@ -474,10 +475,12 @@ class CIconVSR(nn.Module):
             newf = torch.cat([sreal,simg],dim=2)
             att = self.conv3D(newf)
             att = att.squeeze(2)
+            # 相位旋转
             attcos = torch.cos(att)
             attsin = torch.sin(att)
             real = real * attcos
             img = img *attsin
+            # 特征增强
             attreal = real+self.convreal(real)
             attimg = img+self.convimg(img)
             out = torch.cat([attreal, attimg], dim=1)
