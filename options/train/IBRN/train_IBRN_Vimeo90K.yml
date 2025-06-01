@@ -11,6 +11,7 @@ datasets:
   train:
     name: Vimeo90K
     type: IBRNVimeo90KDataset
+    scale: 4
     dataroot_gt: ../vsr_dataset/vimeo90k/GT
     dataroot_lq: ../vsr_dataset/vimeo90k/BIx4
     meta_info_file: ../vsr_dataset/vimeo90k/meta_info_Vimeo90K_train_GT.txt
