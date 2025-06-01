@@ -31,10 +31,9 @@ datasets:
     # data loader
     use_shuffle: true
     num_worker_per_gpu: 8
-    batch_size_per_gpu: 4
+    batch_size_per_gpu: 8
     dataset_enlarge_ratio: 200
     cache_size: 1000
-    force_cpu_copy: true  # 确保数据在 CPU 上
     prefetch_mode: cuda
     pin_memory: true
 
