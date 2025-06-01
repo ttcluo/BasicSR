@@ -227,12 +227,12 @@ class MADIconVSR(nn.Module):
 
         # propagation
         # ========== 后向传播分支 ==========
-        self.backward_conv = ConvResidualBlocks(3, num_feat, 1)  # additional module
+        self.backward_conv = ConvResidualBlocks(3, num_feat, 1)  # additional module 额外卷积模块
         self.backward_fusion = nn.Conv2d(2 * num_feat, num_feat, 3, 1, 1, bias=True) # 特征融合
         self.backward_trunk = ConvResidualBlocks(num_feat*2, num_feat, num_block) # 主干网络
 
         # ========== 前向传播分支 ==========
-        self.forward_conv = ConvResidualBlocks(3, num_feat, 1)  # # additional module
+        self.forward_conv = ConvResidualBlocks(3, num_feat, 1)  # # additional module 额外卷积模块
         self.forward_fusion = nn.Conv2d(2 * num_feat, num_feat, 3, 1, 1, bias=True)
         self.forward_trunk = ConvResidualBlocks(3 * num_feat, num_feat, num_block)
 
@@ -315,7 +315,6 @@ class MADIconVSR(nn.Module):
         # backward branch 后向传播分支
         out_l = [] # 存储输出特征
         feat_prop = x.new_zeros(b, self.num_feat, h, w)  # [b 64 h w]的零矩阵 初始化特征传播
-
         for i in range(n - 1, -1, -1):  # 14， 13， ···，
             x_i = x[:, i, :, :, :]
             if i < n - 1:

@@ -346,13 +346,13 @@ class CIconVSR(nn.Module):
         # 前向主干：输入(LR帧+后向特征+传播特征)
         self.forward_trunk = ConvResidualBlocks(2 * num_feat + 3, num_feat, num_block)
 
-        # === 复数域处理核心 ===
+        # === 复数域处理核心 C.T===
         # 特征压缩：双向特征拼接后降维
         self.compress = nn.Conv2d(2*num_feat, num_feat, 1, 1, 0)
         # 虚部生成：残差块处理压缩特征
         self.resblock1 = ResidualBlockNoBN(num_feat)
 
-        # 3D复数注意力机制
+        # 3D复数注意力机制 C.A
         self.conv3D = nn.Sequential(
             nn.Conv3d(num_feat, num_feat, (3, 3, 3), (1, 1, 1), (1, 1, 1)),  # 3D空间-时间卷积
             nn.PReLU(),  # 参数化ReLU激活

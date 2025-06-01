@@ -12,7 +12,10 @@ from basicsr.archs.arch_util import ResidualBlockNoBN, flow_warp, make_layer
 from basicsr.archs.edvr_arch import PCDAlignment, TSAFusion
 from basicsr.archs.spynet_arch import SpyNet
 from thop import profile
+
+#CMADNet 添加C.T和C.A模块
 class SimpleGate(nn.Module):
+    """简单门控机制：将输入通道分成两半并逐元素相乘"""
     def forward(self, x):
         x1, x2 = x.chunk(2, dim=1)
         return x1 * x2
@@ -20,6 +23,7 @@ class SimpleGate(nn.Module):
 class KBAFunction(torch.autograd.Function):
     '''
     mainly borrows from Kernel bias attention
+    核偏置注意力(Kernel Bias Attention)的自定义函数，支持自动微分
     '''
 
     @staticmethod
@@ -194,8 +198,8 @@ class ConvResidualBlocks(nn.Module):
 
 @ARCH_REGISTRY.register()
 class CMADIconVSR(nn.Module):
-    """Our MADNet mainly borrows from IconVSR.
-
+    """ MADNet mainly borrows from IconVSR.
+        CMADNet add C.T and C.A
     Args:
         num_feat (int): Number of channels. Default: 64.
         num_block (int): Number of residual blocks for each branch. Default: 15.
@@ -218,34 +222,53 @@ class CMADIconVSR(nn.Module):
         self.temporal_padding = temporal_padding
         self.keyframe_stride = keyframe_stride
 
-        # keyframe_branch
+        # keyframe_branch 关键帧特征提取分支 (使用EDVR)
         self.edvr = EDVRFeatureExtractor(temporal_padding * 2 + 1, num_feat, edvr_path)
         # alignment
         self.spynet = SpyNet(spynet_path)
 
         # propagation
-        self.backward_conv = ConvResidualBlocks(3, num_feat, 1)  # additional module
+        # ========== 后向传播分支 ==========
+        self.backward_conv = ConvResidualBlocks(3, num_feat, 1)  # additional module 额外卷积模块
+        self.backward_fusion = nn.Conv2d(2 * num_feat, num_feat, 3, 1, 1, bias=True) # 特征融合
+        self.backward_trunk = ConvResidualBlocks(num_feat*2, num_feat, num_block) # 主干网络
 
-        self.backward_fusion = nn.Conv2d(2 * num_feat, num_feat, 3, 1, 1, bias=True)
-        self.backward_trunk = ConvResidualBlocks(num_feat*2, num_feat, num_block)
-
-        self.forward_conv = ConvResidualBlocks(3, num_feat, 1)  # # additional module
-
+        # ========== 前向传播分支 ==========
+        self.forward_conv = ConvResidualBlocks(3, num_feat, 1)  # # additional module 额外卷积模块
         self.forward_fusion = nn.Conv2d(2 * num_feat, num_feat, 3, 1, 1, bias=True)
         self.forward_trunk = ConvResidualBlocks(3 * num_feat, num_feat, num_block)
 
-        # reconstruction
-        self.upconv1 = nn.Conv2d(num_feat, num_feat * 4, 3, 1, 1, bias=True)
-        self.upconv2 = nn.Conv2d(num_feat, 64 * 4, 3, 1, 1, bias=True)
-        self.conv_hr = nn.Conv2d(64, 64, 3, 1, 1)
-        self.conv_last = nn.Conv2d(64, 3, 3, 1, 1)
+        # === 复数域处理核心 C.T===
+        # 特征压缩：双向特征拼接后降维
+        self.compress = nn.Conv2d(2*num_feat, num_feat, 1, 1, 0)
+        # 虚部生成：残差块处理压缩特征
+        self.resblock1 = ResidualBlockNoBN(num_feat)
 
+        # 3D复数注意力机制 C.A
+        self.conv3D = nn.Sequential(
+            nn.Conv3d(num_feat, num_feat, (3, 3, 3), (1, 1, 1), (1, 1, 1)),  # 3D空间-时间卷积
+            nn.PReLU(),  # 参数化ReLU激活
+            nn.Conv3d(num_feat, num_feat, (2, 1, 1), (2, 1, 1), (0, 0, 0)),  # 降维卷积
+            nn.AdaptiveAvgPool3d(1)  # 全局池化得到注意力向量
+        )
+        # 实部增强卷积
+        self.convreal = nn.Conv2d(num_feat, num_feat, 3, 1, 1, bias=True)
+        # 虚部增强卷积
+        self.convimg = nn.Conv2d(num_feat, num_feat, 3, 1, 1, bias=True)
+
+        # reconstruction 重建模块
+        self.upconv1 = nn.Conv2d(num_feat, num_feat * 4, 3, 1, 1, bias=True) # 上采样卷积1
+        self.upconv2 = nn.Conv2d(num_feat, 64 * 4, 3, 1, 1, bias=True) # 上采样卷积2
+        self.conv_hr = nn.Conv2d(64, 64, 3, 1, 1) # 高分辨率卷积
+        self.conv_last = nn.Conv2d(64, 3, 3, 1, 1) # 最终输出卷积
+
+        # 像素洗牌上采样
         self.pixel_shuffle = nn.PixelShuffle(2)
 
         # activation functions
         self.lrelu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
 
-        # multi-axis diversity enhancement block
+        # multi-axis diversity enhancement block 多轴多样性增强模块
         self.made = MADE()
 
     def pad_spatial(self, x):
@@ -309,10 +332,9 @@ class CMADIconVSR(nn.Module):
         flows_forward, flows_backward = self.get_flow(x)
         feats_keyframe = self.get_keyframe_feature(x, keyframe_idx)
 
-        # backward branch
-        out_l = []
-        feat_prop = x.new_zeros(b, self.num_feat, h, w)  # [b 64 h w]的零矩阵
-
+        # backward branch 后向传播分支
+        out_l = [] # 存储输出特征
+        feat_prop = x.new_zeros(b, self.num_feat, h, w)  # [b 64 h w]的零矩阵 初始化特征传播
         for i in range(n - 1, -1, -1):  # 14， 13， ···，
             x_i = x[:, i, :, :, :]
             if i < n - 1:
@@ -322,12 +344,13 @@ class CMADIconVSR(nn.Module):
                 feat_prop = torch.cat([feat_prop, feats_keyframe[i]], dim=1)
                 feat_prop = self.backward_fusion(feat_prop)
 
-            feat_prop = torch.cat([self.made(self.backward_conv(x_i)), feat_prop], dim=1)  # enhanced by MADE
+            # enhanced by MADE  应用多轴多样性增强
+            feat_prop = torch.cat([self.made(self.backward_conv(x_i)), feat_prop], dim=1)
             feat_prop = self.backward_trunk(feat_prop)
-            out_l.insert(0, feat_prop)
+            out_l.insert(0, feat_prop) # 在列表开头插入结果
 
-        # forward branch
-        feat_prop = torch.zeros_like(feat_prop)
+        # forward branch 前向传播分支
+        feat_prop = torch.zeros_like(feat_prop) # 重置特征传播
         for i in range(0, n):
             x_i = x[:, i, :, :, :]
             if i > 0:
@@ -337,8 +360,27 @@ class CMADIconVSR(nn.Module):
                 feat_prop = torch.cat([feat_prop, feats_keyframe[i]], dim=1)
                 feat_prop = self.forward_fusion(feat_prop)
 
-            feat_prop = torch.cat([self.made(self.forward_conv(x_i)), out_l[i], feat_prop], dim=1)  # enhanced by MADE
+            # enhanced by MADE 应用多轴多样性增强并融合后向分支特征
+            feat_prop = torch.cat([self.made(self.forward_conv(x_i)), out_l[i], feat_prop], dim=1)
             feat_prop = self.forward_trunk(feat_prop)
+
+            # === 复数域处理（同CVSR）===
+            real = feat_prop - out_l[i]
+            img = self.resblock1(self.compress(torch.cat([feat_prop, out_l[i]], dim=1)))
+            sreal = real.unsqueeze(2)
+            simg = img.unsqueeze(2)
+            newf = torch.cat([sreal,simg],dim=2)
+            att = self.conv3D(newf)
+            att = att.squeeze(2)
+            # 相位旋转
+            attcos = torch.cos(att)
+            attsin = torch.sin(att)
+            real = real * attcos
+            img = img *attsin
+            # 特征增强
+            attreal = real+self.convreal(real)
+            attimg = img+self.convimg(img)
+            out = torch.cat([attreal, attimg], dim=1)
 
             # upsample
             out = self.lrelu(self.pixel_shuffle(self.upconv1(feat_prop)))
@@ -440,59 +482,67 @@ class ChannelAttention(nn.Module):
         return x * y
 
 def SDE(x, att, selfk, selfg, selfb, selfw):
+    """ 空间多样性增强的包装函数 """
     return KBAFunction.apply(x, att, selfk, selfg, selfb, selfw)
 
 class MADE(nn.Module):
     def __init__(self, c=64, DW_Expand=2, FFN_Expand=2, nset=64, k=3, gc=4, lightweight=False):
         super(MADE, self).__init__()
-        self.k = k
-        self.g = c // gc
+        self.k = k  # 卷积核大小
+        self.g = c // gc # 分组数
+        # 可学习参数
         self.w = nn.Parameter(torch.zeros(1, nset, c * c // self.g * self.k ** 2))
         self.b = nn.Parameter(torch.zeros(1, nset, c))
 
+        # 主干卷积
         self.dwconv_k5 = nn.Conv2d(in_channels=c, out_channels=c, kernel_size=5, padding=2, stride=1, groups=1, bias=True)
+        # 通道多样性模块
         self.channel_diversity = MultiSpectralAttentionLayer(channel=c, dct_w=56, dct_h=56)
-
+        # 辅助路径卷积
         self.conv1 = nn.Conv2d(in_channels=c, out_channels=c, kernel_size=1, padding=0, stride=1, groups=1, bias=True)
         self.conv21 = nn.Conv2d(in_channels=c, out_channels=c, kernel_size=3, padding=1, stride=1, groups=c, bias=True)
 
+        # 空间多样性路径
         self.conv11 = nn.Sequential(
             nn.Conv2d(in_channels=c, out_channels=c, kernel_size=1, padding=0, stride=1, groups=1, bias=True),
             nn.Conv2d(in_channels=c, out_channels=c, kernel_size=3, padding=1, stride=1, groups=64, bias=True),
         )
+        # 注意力生成路径
         self.conv2 = nn.Sequential(
             nn.Conv2d(in_channels=c, out_channels=32, kernel_size=3, padding=1, stride=1, groups=32, bias=True),
-            SimpleGate(),
-            nn.Conv2d(32 // 2, 64, 1, padding=0, stride=1),
+            SimpleGate(), # 门控机制
+            nn.Conv2d(32 // 2, 64, 1, padding=0, stride=1), # 通道减半后再恢复
         )
         self.conv211 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=1)
 
+        # 可学习缩放因子
         self.attgamma = nn.Parameter(torch.zeros((1, 64, 1, 1)) + 1e-2, requires_grad=True)
         self.ga1 = nn.Parameter(torch.zeros((1, c, 1, 1)) + 1e-2, requires_grad=True)
+        # 特征融合层
         self.fusion = nn.Conv2d(c, c, kernel_size=1, bias=True)
 
     def forward(self, inp):
         x = inp
         x = self.dwconv_k5(x)
 
-        # Three branches
-        # 1
+        # Three branches 三路特征增强
+        # 1 通道多样性增强
         ca = self.channel_diversity(x)  # CDE
 
-        # 2
+        # 2 辅助路径特征
         x1 = self.conv11(x)  # Aux
 
-        # 3
+        # 3 空间多样性增强
         att = self.conv2(x) * self.attgamma + self.conv211(x)
         uf = self.conv21(self.conv1(x))
         sa = SDE(uf, att, self.k, self.g, self.b, self.w) * self.ga1 + uf  # SDE
 
-        # aggregation
-        x = ca + x1 + sa
-        x = self.fusion(x)  # [b 64 h w]
+        # aggregation 特征聚合
+        x = ca + x1 + sa  # 三路特征相加
+        x = self.fusion(x)  # [b 64 h w]  1x1卷积融合
 
+        # 门控输出
         out = x * inp
-
         return out
 
 def print_network(net):
