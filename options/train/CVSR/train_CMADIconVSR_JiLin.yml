@@ -30,7 +30,7 @@ datasets:
     use_rot: true
 
     # data loader
-    num_worker_per_gpu: 0
+    num_worker_per_gpu: 6
     batch_size_per_gpu: 1
     dataset_enlarge_ratio: 200
     prefetch_mode: ~
@@ -82,8 +82,8 @@ train:
 
   total_iter: 200000
   warmup_iter: -1  # no warm up
-  fix_flow: 5000
-  flow_lr_mul: 0.125
+  fix_flow: 10000
+  flow_lr_mul: 0.06
 
   # losses
   pixel_opt:
