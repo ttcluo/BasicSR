@@ -63,7 +63,7 @@ network_g:
 path:
   pretrain_network_g: ~
   strict_load_g: true
-  resume_state: ~
+  resume_state: experiments/CIconVSR_JiLin189/training_states/75000.state
 
 # training settings
 train:
@@ -94,7 +94,7 @@ train:
 # validation settings
 val:
   val_freq: !!float 5e3
-  save_img: false
+  save_img: true
 
   metrics:
     psnr: # metric name, can be arbitrary

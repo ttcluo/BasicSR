@@ -168,3 +168,5 @@ PORT=4321 CUDA_VISIBLE_DEVICES=4 numactl --cpunodebind=1 --membind=1     ./scrip
 nvitop -m full
 
 chmod +x ./scripts/dist_train1.sh
+
+PORT=4323 CUDA_VISIBLE_DEVICES=0 numactl --cpunodebind=0 --membind=0 bash ./scripts/dist_test.sh 1 options/test/MADNet/test_MADNet.yml
