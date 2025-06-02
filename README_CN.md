@@ -170,3 +170,6 @@ nvitop -m full
 chmod +x ./scripts/dist_train1.sh
 
 PORT=4323 CUDA_VISIBLE_DEVICES=0 numactl --cpunodebind=0 --membind=0 bash ./scripts/dist_test.sh 1 options/test/MADNet/test_MADNet.yml
+
+tensorboard --logdir=/data/luochuan/BasicSR --port=6006
+ssh -L 16006:localhost:6006 luochuan@20.66.31.2
