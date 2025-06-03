@@ -30,7 +30,7 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: experiments/CMADIconVSR_JiLin189/models/net_g_40000.pth
+  pretrain_network_g: experiments/CMADIconVSR_JiLin189/models/net_g_760000.pth
   strict_load_g: true
 
 # validation settings
