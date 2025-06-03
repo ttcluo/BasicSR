@@ -467,9 +467,11 @@ class CIconVSR(nn.Module):
             feat_prop = torch.cat([x_i, out_l[i], feat_prop], dim=1)
             feat_prop = self.forward_trunk(feat_prop)
 
-            # === 复数域处理（同CVSR）===
+            # === 复数域处理 C.T ===
             real = feat_prop - out_l[i]
             img = self.resblock1(self.compress(torch.cat([feat_prop, out_l[i]], dim=1)))
+
+            # === C.A ===
             sreal = real.unsqueeze(2)
             simg = img.unsqueeze(2)
             newf = torch.cat([sreal,simg],dim=2)
@@ -483,7 +485,10 @@ class CIconVSR(nn.Module):
             # 特征增强
             attreal = real+self.convreal(real)
             attimg = img+self.convimg(img)
+
+
             out = torch.cat([attreal, attimg], dim=1)
+            #outimg =
 
             # upsample
             out = self.lrelu(self.pixel_shuffle(self.upconv1(feat_prop)))
