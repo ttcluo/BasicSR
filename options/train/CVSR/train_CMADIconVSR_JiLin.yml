@@ -63,7 +63,7 @@ network_g:
 path:
   pretrain_network_g: ~
   strict_load_g: true
-  resume_state: experiments/CMADIconVSR_JiLin189/training_states/5000.state
+  resume_state: experiments/CMADIconVSR_JiLin189/training_states/76000.state
 
 # training settings
 train:
