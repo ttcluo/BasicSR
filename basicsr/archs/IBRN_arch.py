@@ -6,11 +6,11 @@ import numpy as np
 from einops import rearrange
 
 from basicsr.archs.arch_util_ibrn import ResidualBlockNoBN, flow_warp2, make_layer, FlowEstimate, DeblurModule
-from basicsr.archs.arch_util import DCNv2Pack as DCN
+from basicsr.archs.arch_util_old import DCNv2Pack as DCN
 from basicsr.utils.registry import ARCH_REGISTRY
 
 @ARCH_REGISTRY.register()
-class BasicVSR_V4(nn.Module):
+class IBRN(nn.Module):
     """
 
     Args:
@@ -22,7 +22,7 @@ class BasicVSR_V4(nn.Module):
             Default: None.
     """
     def __init__(self, num_feat=64, extract_block=12, num_block=30, resType="ResidualBlockNoBN", use_deblur=False, upscale=4):
-        super(BasicVSR_V4, self).__init__()
+        super(IBRN, self).__init__()
         self.num_feat = num_feat
         self.num_block = num_block
         self.use_deblur = use_deblur
@@ -221,7 +221,7 @@ class PSUpsample(nn.Module):
 
 
 if __name__ == '__main__':
-    model = BasicVSR()
+    model = IBRN()
     lrs = torch.randn(3, 4, 3, 64, 64)
     rlt = model(lrs)
     print(rlt.size())
