@@ -8,7 +8,7 @@ from basicsr.utils import FileClient, get_root_logger, imfrombytes, img2tensor
 from basicsr.utils.registry import DATASET_REGISTRY
 
 
-# @DATASET_REGISTRY.register()
+@DATASET_REGISTRY.register()
 class Vimeo90KDataset(data.Dataset):
     """Vimeo90K dataset for training.
 
@@ -133,7 +133,7 @@ class Vimeo90KDataset(data.Dataset):
         return len(self.keys)
 
 
-# @DATASET_REGISTRY.register()
+@DATASET_REGISTRY.register()
 class Vimeo90KRecurrentDataset(Vimeo90KDataset):
 
     def __init__(self, opt):

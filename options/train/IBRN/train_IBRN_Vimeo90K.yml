@@ -10,7 +10,7 @@ manual_seed: 10
 datasets:
   train:
     name: Vimeo90K
-    type: Vimeo90KDataset
+    type: Vimeo90KRecurrentDataset
     scale: 4
     dataroot_gt: ../vsr_dataset/vimeo90k/GT
     dataroot_lq: ../vsr_dataset/vimeo90k/BIx4
