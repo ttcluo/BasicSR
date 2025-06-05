@@ -10,7 +10,7 @@ from basicsr.archs.arch_util import DCNv2Pack as DCN
 from basicsr.utils.registry import ARCH_REGISTRY
 
 @ARCH_REGISTRY.register()
-class BasicVSR_V4(nn.Module):
+class CIBRNNet(nn.Module):
     """
 
     Args:
@@ -22,7 +22,7 @@ class BasicVSR_V4(nn.Module):
             Default: None.
     """
     def __init__(self, num_feat=64, extract_block=12, num_block=30, resType="ResidualBlockNoBN", use_deblur=False, upscale=4):
-        super(BasicVSR_V4, self).__init__()
+        super(CIBRNNet, self).__init__()
         self.num_feat = num_feat
         self.num_block = num_block
         self.use_deblur = use_deblur
@@ -51,6 +51,25 @@ class BasicVSR_V4(nn.Module):
         # Bidirectional Propagation
         self.forward_resblocks = ConvResBlock(num_feat * 4, num_feat, num_block, resType)
         self.backward_resblocks = ConvResBlock(num_feat * 3, num_feat, num_block, resType)
+
+        # === 复数特征构建模块 ===
+        # 1x1卷积压缩双向特征通道 (用于构建虚部)
+        self.compress = nn.Conv2d(2*num_feat,num_feat,1,1,0)
+        # 残差块处理压缩后的特征 (虚部生成)
+        self.resblock1 = ResidualBlockNoBN(num_feat)
+
+        # === 复数注意力机制 ===
+        # 3D卷积+池化提取复数空间注意力
+        self.conv3D = nn.Sequential(
+            nn.Conv3d(num_feat,num_feat,(3,3,3),(1,1,1),(1,1,1)),  # 3D空间卷积
+            nn.PReLU(), # 参数化ReLU
+            nn.Conv3d(num_feat, num_feat, (2, 1, 1), (2, 1, 1), (0,0,0)), # 降维卷积
+            nn.AdaptiveAvgPool3d(1) # 全局池化生成注意力向量
+        )
+        # 实部增强卷积
+        self.convreal = nn.Conv2d(num_feat,num_feat,3,1,1,bias=True)
+        # 虚部增强卷积
+        self.convimg = nn.Conv2d(num_feat, num_feat, 3, 1, 1, bias=True)
 
         # Concatenate Aggregation
         self.concate = nn.Conv2d(num_feat * 2, num_feat, kernel_size=1, stride=1, padding=0, bias=True)
@@ -153,8 +172,36 @@ class BasicVSR_V4(nn.Module):
             if self.use_deblur:
                 feat_prop = self.deblur(feat_prop)
 
+            # === 复数特征构建 ===
+            # 实部 = 前向特征 - 后向特征
+            real = feat_prop - curr_lr
+            # 虚部 = 融合(前向+后向) → 压缩 → 残差块
+            img = self.resblock1(self.compress(torch.cat([feat_prop, curr_lr], dim=1)))
+
+            # === 复数注意力机制 ===
+            # 构建3D特征张量 [b, c, 2, h, w]
+            sreal = real.unsqueeze(2) # 实部增加维度
+            simg = img.unsqueeze(2) # 虚部增加维度
+            newf = torch.cat([sreal,simg],dim=2) # 拼接实部和虚部
+
+            # 3D卷积提取注意力
+            att = self.conv3D(newf) # [b, c, 1, 1, 1]
+            att = att.squeeze(2) # 降维 [b, c, 1, 1]
+
+            # 欧拉公式旋转 (复数乘法)
+            attcos = torch.cos(att) # 旋转因子实部
+            attsin = torch.sin(att) # 旋转因子虚部
+            real = real * attcos # 实部旋转
+            img = img *attsin # 虚部旋转
+
+            # 增强旋转后特征
+            attreal = real+self.convreal(real) # 实部增强
+            attimg = img+self.convimg(img)  # 虚部增强
+
             # Fusion and Upsampling
-            cat_feat = torch.cat([feat_prop, curr_lr], dim=1)
+            # 合并旋转后的复数特征
+            # out = torch.cat([attreal, attimg], dim=1)
+            cat_feat = torch.cat([attimg, attreal], dim=1)
             sr_rlt = self.lrelu(self.concate(cat_feat))
 
             if self.upscale != 1:
@@ -221,7 +268,7 @@ class PSUpsample(nn.Module):
 
 
 if __name__ == '__main__':
-    model = BasicVSR_V4()
+    model = CIBRNNet()
     lrs = torch.randn(3, 4, 3, 64, 64)
     rlt = model(lrs)
     print(rlt.size())
