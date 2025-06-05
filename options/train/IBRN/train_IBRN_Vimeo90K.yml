@@ -25,6 +25,7 @@ datasets:
     random_reverse: false
     use_hflip: true
     use_rot: true
+    flip_sequence: true
 
     # data loader
     use_shuffle: true
