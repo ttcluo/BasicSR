@@ -63,7 +63,7 @@ datasets:
 
 # network structures
 network_g:
-  type: IBRN
+  type: BasicVSR_V4
   num_feat: 64
   extract_block: 12
   num_block: 30
