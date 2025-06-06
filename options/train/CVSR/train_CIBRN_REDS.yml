@@ -37,7 +37,7 @@ datasets:
 
   val:
     name: REDS4
-    type: REDSRecurrentDataset
+    type: REDSIRBNRecurrentDataset
     dataroot_gt: ../vsr_dataset/REDS/train_sharp
     dataroot_lq: ../vsr_dataset/REDS/train_sharp_bicubic/X4
     meta_info_file: ../vsr_dataset/REDS/meta_info_REDS_GT.txt
@@ -48,7 +48,7 @@ datasets:
       type: disk
 
     is_train: false
-    num_frame: -1  # not needed
+    num_frame: 20
     gt_size: 256
     interval_list: [1]
     random_reverse: false
@@ -102,8 +102,8 @@ train:
 
 # validation settings
 val:
-  val_freq: !!float 5e3
-  save_img: true
+  val_freq: !!float 2e2
+  save_img: false
 
   metrics:
     psnr: # metric name, can be arbitrary
