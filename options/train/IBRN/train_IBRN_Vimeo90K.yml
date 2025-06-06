@@ -1,5 +1,5 @@
 # general settings
-name: IBRN_ORIGIN_4e-6_300k_b6_stage1
+name: IBRN_ORIGIN_2e-4_300k_b1
 # experiments_root: exp_video2/vimeo90k_retrain2
 model_type: BasicVSRModel
 scale: 4
@@ -29,9 +29,9 @@ datasets:
 
     # data loader
     use_shuffle: true
-    num_worker_per_gpu: 8
-    batch_size_per_gpu: 6
-    dataset_enlarge_ratio: 10
+    num_worker_per_gpu: 6
+    batch_size_per_gpu: 1
+    dataset_enlarge_ratio: 200
     prefetch_mode: ~
     pin_memory: true
 
@@ -81,7 +81,7 @@ path:
 train:
   optim_g:
     type: Adam
-    lr: !!float 4e-6
+    lr: !!float 2e-4
     weight_decay: 0
     betas: [0.9, 0.99]
 
@@ -90,7 +90,7 @@ train:
     periods: [300000]
     # periods: [250000, 250000, 250000, 250000]
     restart_weights: [1]
-    eta_min: !!float 4e-7
+    eta_min: !!float 1e-7
 
   total_iter: 300000
   warmup_iter: -1  # no warm up
