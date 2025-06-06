@@ -37,7 +37,7 @@ datasets:
 
   val:
     name: REDS4
-    type: REDSRecurrentTestDataset
+    type: REDSRecurrentDataset
     dataroot_gt: ../vsr_dataset/REDS/train_sharp
     dataroot_lq: ../vsr_dataset/REDS/train_sharp_bicubic/X4
     meta_info_file: ../vsr_dataset/REDS/meta_info_REDS_GT.txt
