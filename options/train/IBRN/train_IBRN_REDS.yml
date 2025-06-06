@@ -37,15 +37,23 @@ datasets:
 
   val:
     name: REDS4
-    type: VideoRecurrentTestDataset
-    dataroot_gt: ../vsr_dataset/REDS/val_sharp
-    dataroot_lq: ../vsr_dataset/REDS/val_x4
-
+    type: REDSRecurrentTestDataset
+    dataroot_gt: ../vsr_dataset/REDS/train_sharp
+    dataroot_lq: ../vsr_dataset/REDS/train_sharp_bicubic/X4
+    meta_info_file: ../vsr_dataset/REDS/meta_info_REDS_GT.txt
+    val_partition: REDS4
+    test_mode: True
     cache_data: True
     io_backend:
       type: disk
 
+    is_train: false
     num_frame: -1  # not needed
+    gt_size: 256
+    interval_list: [1]
+    random_reverse: false
+    use_hflip: false
+    use_rot: false
 
 
 # network structures
