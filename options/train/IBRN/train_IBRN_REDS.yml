@@ -1,5 +1,5 @@
 # general settings
-name: CIBRN_REDS_2e-4_b1
+name: IBRN_REDS_2e-4_b1
 # experiments_root: exp_15/REDS
 model_type: BasicVSRModel  # BasicVSRModel BasicVSRGanModel
 scale: 4
@@ -50,7 +50,7 @@ datasets:
 
 # network structures
 network_g:
-  type: CIBRNNet
+  type: BasicVSR_V4
   num_feat: 64
   extract_block: 12
   num_block: 30
