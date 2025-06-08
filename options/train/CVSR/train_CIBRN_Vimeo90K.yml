@@ -75,7 +75,7 @@ network_g:
 path:
   pretrain_network_g: #exp_video2/vimeo90k_retrain2/BasicVSR_V4_1e-6_100k_b6_stage4/models/net_g_100000.pth #exp_video2/V4_4e-4_REDS_BI_x4/models/net_g_235000.pth
   strict_load_g: false
-  resume_state: #experiments/IBRN_BasicVSR_V4_1e-6_100k_b6_stage5/training_states/5000.state
+  resume_state: experiments/CIBRN_2e-4_300k_b1/training_states/160000.state
 
 # training settings
 train:
