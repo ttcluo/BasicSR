@@ -1,5 +1,5 @@
 # general settings
-name: CIBRN_1e-4_REAL_BI_x4
+name: CIBRN_2e-4_REAL_BI_x4
 experiments_root: exp_video_real
 model_type: BasicVSRModel  # BasicVSRModel BasicVSRGanModel
 scale: 1
