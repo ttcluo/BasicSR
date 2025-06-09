@@ -4,11 +4,11 @@ from torch.cuda.amp import autocast
 from torch.nn.parallel import DataParallel, DistributedDataParallel
 
 from archs import build_network
-from .sr_model import SRModel1
-from .video_recurrent_model import VideoRecurrentModel1
+from .sr1_model import SRModel1
+from .video_recurrent1_model import VideoRecurrentModel1
 from basicsr.utils import get_root_logger
 from basicsr.utils.registry import MODEL_REGISTRY
-from losses.sparsity_loss import SparsityLoss
+from basicsr.losses.sparsity_loss import SparsityLoss
 
 @MODEL_REGISTRY.register()
 class RecurrentMixPrecisionRTModel(VideoRecurrentModel1):
