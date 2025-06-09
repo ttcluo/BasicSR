@@ -16,3 +16,4 @@ tqdm==4.67.1
 yapf==0.43.0
 thop
 six=1.17.0
+h5py
