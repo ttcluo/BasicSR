@@ -7,7 +7,7 @@ from basicsr.utils.registry import ARCH_REGISTRY
 from basicsr.archs.spynet_arch import SpyNet
 from basicsr.ops.dcn import ModulatedDeformConvPack
 from basicsr.archs.attn_util import DualChannelBlock
-from .arch_util import flow_warp, ConvResidualBlocks, EventFrameAlign
+from .arch_util_evde import flow_warp, ConvResidualBlocks, EventFrameAlign
 
 
 @ARCH_REGISTRY.register()
@@ -49,7 +49,7 @@ class EvDeblurVSR(nn.Module):
         # Hybrid Deformable Alignment
         self.event_align1 = EventFrameAlign(mid_channels,voxel_bins)
         self.event_align2 = EventFrameAlign(mid_channels,voxel_bins*2)
- 
+
         # propagation branches
         self.deform_align = nn.ModuleDict()
         self.backbone = nn.ModuleDict()
