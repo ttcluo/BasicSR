@@ -13,7 +13,7 @@ import torch
 import torch.distributed as dist
 from torch import inf
 
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 
 
 def batch_index_select(x, idx):
