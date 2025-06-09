@@ -18,4 +18,4 @@ PYTHONPATH="$(dirname "$0")/..:${PYTHONPATH}" \
 torchrun \
     --nproc_per_node=$GPUS \
     --master_port=$PORT \
-    basicsr/train.py -opt "$CONFIG" --launcher pytorch "${@:3}"
+    basicsr/recurrent_mix_precision_train.py -opt "$CONFIG" --launcher pytorch "${@:3}"
