@@ -1,6 +1,7 @@
 # Modified from https://github.com/open-mmlab/mmcv/blob/master/mmcv/fileio/file_client.py  # noqa: E501
+import numpy as np
 from abc import ABCMeta, abstractmethod
-
+import os.path as osp
 
 class BaseStorageBackend(metaclass=ABCMeta):
     """Abstract class of storage backends.
@@ -128,6 +129,63 @@ class LmdbBackend(BaseStorageBackend):
     def get_text(self, filepath):
         raise NotImplementedError
 
+class Hdf5Backend(BaseStorageBackend):
+
+    def __init__(self, h5_paths, client_keys='default', h5_clip='default', **kwargs):
+        try:
+            import h5py
+        except ImportError:
+            raise ImportError('Please install h5py to enable Hdf5Backend.')
+
+        if isinstance(client_keys, str):
+            client_keys = [client_keys]
+
+        if isinstance(h5_paths, list):
+            self.h5_paths = [str(v) for v in h5_paths]
+        elif isinstance(h5_paths, str):
+            self.h5_paths = [str(h5_paths)]
+        assert len(client_keys) == len(self.h5_paths), ('client_keys and db_paths should have the same length, '
+                                                        f'but received {len(client_keys)} and {len(self.h5_paths)}.')
+
+        self._client = {}
+        for client, path in zip(client_keys, self.h5_paths):
+            try:
+                self._client[client] = h5py.File(osp.join(path, h5_clip), 'r')
+            except Exception:
+                print(f"IO error, please check {path} {h5_clip}.")
+
+    def get(self, filepath):
+
+        file_lr = self._client['LR']
+        file_hr = self._client['HR']
+        img_lrs = []
+        img_hrs = []
+
+        # get images
+        for idx in filepath:
+            img_hr = file_hr[f'images/{idx:06d}'][:].astype(np.float32) / 255.
+            img_hrs.append(img_hr)
+        for idx in filepath:
+            img_lr = file_lr[f'images/{idx:06d}'][:].astype(np.float32) / 255.
+            img_lrs.append(img_lr)
+
+        voxels_f = []
+        voxels_b = []
+        for idx in filepath[:-1]:
+            voxel_f = file_lr[f'vFwd/{idx:06d}'][:].astype(np.float32)
+            voxel_b = file_lr[f'vBwd/{idx:06d}'][:].astype(np.float32)
+            voxels_f.append(voxel_f)
+            voxels_b.append(voxel_b)
+        voxels_Expo = []
+        for idx in filepath:
+            voxel_Expo = file_lr[f'vExpo/{idx:06d}'][:].astype(np.float32)
+            voxels_Expo.append(voxel_Expo)
+        assert len(voxels_Expo) == len(voxels_b) + 1, "Please check data."
+        return img_lrs, img_hrs, voxels_f, voxels_b, voxels_Expo
+
+    def get_text(self, filepath):
+        raise NotImplementedError
+
 
 class FileClient(object):
     """A general file client to access files in different backend.
@@ -146,6 +204,7 @@ class FileClient(object):
         'disk': HardDiskBackend,
         'memcached': MemcachedBackend,
         'lmdb': LmdbBackend,
+        'hdf5': Hdf5Backend,
     }
 
     def __init__(self, backend='disk', **kwargs):
