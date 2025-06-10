@@ -5,5 +5,5 @@ from .deform_conv import (DeformConv, DeformConvPack, ModulatedDeformConv,
 
 __all__ = [
     'DeformConv', 'DeformConvPack', 'ModulatedDeformConv', 'ModulatedDeformConvPack', 'deform_conv',
-    'modulated_deform_conv','ModulatedDeformConvPackNOInnerOffset,'
+    'modulated_deform_conv','ModulatedDeformConvPackNOInnerOffset'
 ]
