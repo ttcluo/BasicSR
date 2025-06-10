@@ -62,9 +62,9 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: experiments/IBRN_2e-4_REAL_BI_x4/models/net_g_95000.pth
+  pretrain_network_g: #experiments/IBRN_2e-4_REAL_BI_x4/models/net_g_95000.pth
   strict_load_g: false
-  resume_state: experiments/IBRN_2e-4_REAL_BI_x4/training_states/95000.state
+  resume_state: experiments/IBRN_2e-4_REAL_BI_x4/training_states/185000.state
 
 # training settings
 train:
