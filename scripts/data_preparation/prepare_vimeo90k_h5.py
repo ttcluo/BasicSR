@@ -225,7 +225,7 @@ def process_vimeo_sequence(sequence_path, output_path, is_hr=True):
 
 def main():
     # 设置路径
-    vimeo_root = Path("data/luochuan/vsr_dataset/vimeo90k_small")
+    vimeo_root = Path("/data/luochuan/vsr_dataset/vimeo90k_small")
     hr_path = vimeo_root / "GT"
     lr_path = vimeo_root / "BIx4"
 
