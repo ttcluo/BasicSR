@@ -3,7 +3,7 @@
 import torch
 import torch.nn.functional as F
 from basicsr.utils.registry import ARCH_REGISTRY
-from .arch_util import SizeAdapter
+from .arch_util_evtexture import SizeAdapter
 from torch import nn
 
 
