@@ -1,6 +1,6 @@
 # general settings
 name: IART_Vimeo_N14_300K
-model_type: RecurrentMixPrecisionRTModel
+model_type: RecurrentMixPrecisionIARTModel
 scale: 4
 num_gpu: 8  # official: 8 GPUs
 manual_seed: 0
