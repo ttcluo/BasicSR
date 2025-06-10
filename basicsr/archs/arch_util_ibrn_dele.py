@@ -95,6 +95,146 @@ class CALayer(nn.Module):
         return x * y
 
 
+class BasicConv(nn.Module):
+    def __init__(
+        self,
+        in_planes,
+        out_planes,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        relu=True,
+        bn=True,
+        bias=False,
+    ):
+        super(BasicConv, self).__init__()
+        self.out_channels = out_planes
+        self.conv = nn.Conv2d(
+            in_planes,
+            out_planes,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=bias,
+        )
+        self.bn = (
+            nn.BatchNorm2d(out_planes, eps=1e-5, momentum=0.01, affine=True)
+            if bn
+            else None
+        )
+        self.relu = nn.ReLU() if relu else None
+
+    def forward(self, x):
+        x = self.conv(x)
+        if self.bn is not None:
+            x = self.bn(x)
+        if self.relu is not None:
+            x = self.relu(x)
+        return x
+
+
+class ZPool(nn.Module):
+    def forward(self, x):
+        return torch.cat( (torch.max(x,1)[0].unsqueeze(1), torch.mean(x,1).unsqueeze(1)), dim=1 )
+
+class AttentionGate(nn.Module):
+    def __init__(self):
+        super(AttentionGate, self).__init__()
+        kernel_size = 7
+        self.compress = ZPool()
+        self.conv = BasicConv(2, 1, kernel_size, stride=1, padding=(kernel_size-1) // 2, relu=False)
+    def forward(self, x):
+        x_compress = self.compress(x)
+        x_out = self.conv(x_compress)
+        scale = torch.sigmoid_(x_out) 
+        return x * scale
+
+class TripletAttention(nn.Module):
+    def __init__(self, no_spatial=False):
+        super(TripletAttention, self).__init__()
+        self.cw = AttentionGate()
+        self.hc = AttentionGate()
+        self.no_spatial=no_spatial
+        if not no_spatial:
+            self.hw = AttentionGate()
+    def forward(self, x):
+        x_perm1 = x.permute(0,2,1,3).contiguous()
+        x_out1 = self.cw(x_perm1)
+        x_out11 = x_out1.permute(0,2,1,3).contiguous()
+        x_perm2 = x.permute(0,3,2,1).contiguous()
+        x_out2 = self.hc(x_perm2)
+        x_out21 = x_out2.permute(0,3,2,1).contiguous()
+        if not self.no_spatial:
+            x_out = self.hw(x)
+            x_out = 1/3 * (x_out + x_out11 + x_out21)
+        else:
+            x_out = 1/2 * (x_out11 + x_out21)
+        return x_out
+
+
+class channel_attn(nn.Module):
+    def __init__(self):
+        super(channel_attn, self).__init__()
+        kernel_size = 7
+        self.compress = ZPool()
+        self.conv = nn.Conv2d(2, 1, kernel_size, stride=1, padding=(kernel_size-1) // 2)
+    def forward(self, x):
+        x_compress = self.compress(x)
+        x_out = self.conv(x_compress)
+        scale = torch.sigmoid_(x_out) 
+        return x * scale
+
+
+class SpatialAttention(nn.Module):
+    def __init__(self, kernel_size=7):
+        super(SpatialAttention, self).__init__()
+        #声明卷积核为 3 或 7
+        assert kernel_size in (3, 7), 'kernel size must be 3 or 7'
+        #进行相应的same padding填充
+        padding = 3 if kernel_size == 7 else 1
+
+        self.conv1 = nn.Conv2d(2, 1, kernel_size, padding=padding, bias=False)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        avg_out = torch.mean(x, dim=1, keepdim=True)  #平均池化
+        max_out, _ = torch.max(x, dim=1, keepdim=True) #最大池化
+
+        weight = torch.cat([avg_out, max_out], dim=1)
+        weight = self.conv1(weight)
+        return self.sigmoid(weight) * x
+
+
+class CCASA(nn.Module):
+    " corss channel attention and spatial attention "
+    def __init__(self):
+        super(CCASA, self).__init__()
+        self.cw = channel_attn()
+        self.hc = channel_attn()
+
+        self.sa = SpatialAttention()
+
+    def forward(self, x):
+        # corss channel attention
+        x_perm1 = x.permute(0,2,1,3).contiguous()
+        x_out1 = self.cw(x_perm1)
+        x_out11 = x_out1.permute(0,2,1,3).contiguous()
+
+        x_perm2 = x.permute(0,3,2,1).contiguous()
+        x_out2 = self.hc(x_perm2)
+        x_out21 = x_out2.permute(0,3,2,1).contiguous()
+
+        x_out = 1/2 * (x_out11 + x_out21)
+
+        # spatial attention
+        x_out = self.sa(x_out)
+        return x_out
+
+
 class ResidualBlockNoBN(nn.Module):
     """depthwise_separable Residual block without BN.
 
@@ -110,17 +250,21 @@ class ResidualBlockNoBN(nn.Module):
             otherwise, use default_init_weights. Default: False.
         wca: with Channel Attention. default: False
     """
-    def __init__(self, num_feat=64, kernel_size=3, res_scale=1, pytorch_init=False, wca=False):
+    def __init__(self, num_feat=64, kernel_size=3, res_scale=1, pytorch_init=False, attn_name=None):
         super(ResidualBlockNoBN, self).__init__()
         self.res_scale = res_scale
-        self.wca = wca
+        self.attn_name = attn_name
 
         self.conv1 = nn.Conv2d(num_feat, num_feat, kernel_size, 1, kernel_size//2, bias=True)
         self.conv2 = nn.Conv2d(num_feat, num_feat, kernel_size, 1, kernel_size//2, bias=True)
         self.relu = nn.ReLU(inplace=True)
 
-        if self.wca:
-            self.ca = CALayer(num_feat, 8)
+        if self.attn_name == "Calayer":
+            self.attn = CALayer(num_feat, 8)
+        elif self.attn_name == "triplet":
+            self.attn = TripletAttention()
+        elif self.attn_name == "CCASA":
+            self.attn = CCASA()
 
         if not pytorch_init:
             default_init_weights([self.conv1, self.conv2], 0.1)
@@ -128,8 +272,8 @@ class ResidualBlockNoBN(nn.Module):
     def forward(self, x):
         identity = x
         out = self.conv2(self.relu(self.conv1(x)))
-        if self.wca:
-            out = self.ca(out)
+        if self.attn_name is not None:
+            out = self.attn(out)
         return identity + out * self.res_scale
 
 
@@ -318,7 +462,7 @@ class DCNv2Pack(ModulatedDeformConvPack):
 
     def forward(self, x, feat):
         out = self.conv_offset(feat)
-        o1, o2, mask = torch.chunk(out, 3, dim=1)
+        o1, o2, mask = torch.chunk(feat, 3, dim=1)
         offset = torch.cat((o1, o2), dim=1)
         mask = torch.sigmoid(mask)
 
@@ -350,9 +494,9 @@ class DCNv2(ModulatedDeformConvPackNOInnerOffset):
         offset = torch.cat((o1, o2), dim=1)
         mask = torch.sigmoid(mask)
 
-        # offset_absmean = torch.mean(torch.abs(offset))
-        # if offset_absmean > 50:
-        #     offset = self.conv_adjust(offset)
+        offset_absmean = torch.mean(torch.abs(offset))
+        if offset_absmean > 50:
+            offset = self.conv_adjust(offset)
         # if offset_absmean > 50:
         #     logger = get_root_logger()
         #     logger.warning(
@@ -436,6 +580,43 @@ class SpectralConv2d(nn.Module):
         return output
 
 
+# def fft_conv_1d(
+#     signal: Tensor, kernel: Tensor, bias: Tensor = None, padding: int = 0,
+# ) -> Tensor:
+#     """
+#     Args:
+#         signal: (Tensor) Input tensor to be convolved with the kernel.
+#         kernel: (Tensor) Convolution kernel.
+#         bias: (Optional, Tensor) Bias tensor to add to the output.
+#         padding: (int) Number of zero samples to pad the input on the last dimension.
+#     Returns:
+#         (Tensor) Convolved tensor
+#     """
+#     # 1. Pad the input signal & kernel tensors                                                                                                                                                                            
+#     signal = f.pad(signal, [padding, padding])
+#     kernel_padding = [0, signal.size(-1) - kernel.size(-1)]
+#     padded_kernel = f.pad(kernel, kernel_padding)
+
+#     # 2. Perform fourier convolution
+#     signal_fr = rfftn(signal, dim=(-2, -1))
+#     kernel_fr = rfftn(padded_kernel, dim=-1)
+
+#     # 3. Multiply the transformed matrices
+#     kernel_fr.imag *= -1
+#     output_fr = complex_matmul(signal_fr, kernel_fr)
+
+#     # 4. Compute inverse FFT, and remove extra padded values
+#     output = irfftn(output_fr, dim=(-2, -1))
+#     output = output[:, :, :signal.size(-1) - kernel.size(-1) + 1]
+
+#     # 5. Optionally, add a bias term before returning.
+#     if bias is not None:
+#         output += bias.view(1, -1, 1)
+
+#     return output
+
+
+
 class FNO(nn.Module):
     def __init__(self, num_feat):
         super(FNO, self).__init__()
@@ -492,6 +673,73 @@ class FNO(nn.Module):
         x = x + res
         x = self.fc2(x)
         return x
+
+class FlowEstimate_block(nn.Module):
+    def __init__(self, in_feat=64, hidden_feat=64, scale=1, bias=True):
+
+        super(FlowEstimate_block, self).__init__()
+
+        self.scale = scale
+
+        self.conv0 = nn.Sequential(
+            nn.Conv2d(in_feat, hidden_feat//2, 3, 2, 1, bias=bias),
+            nn.Conv2d(hidden_feat//2, hidden_feat, 3, 1, 1, bias=bias)
+        )
+
+        conv_block = [nn.Conv2d(hidden_feat, hidden_feat, 3, 1, 1, bias=bias) for _ in range(8)]
+        self.convblock = nn.Sequential(*conv_block)
+
+        self.conv1 = nn.ConvTranspose2d(hidden_feat, 4, 4, 2, 1)
+    
+    def forward(self, x):
+        # if self.scale != 1:
+        #     x = F.interpolate(x, scale_factor= 1. / self.scale, mode="bilinear", align_corners=False)
+        x = self.conv0(x)
+        x = self.convblock(x) + x
+        x = self.conv1(x)
+        flow = x
+        # if self.scale != 1:
+        #     flow = F.interpolate(flow, scale_factor= self.scale, mode="bilinear", align_corners=False)
+        return flow
+
+
+class FlowEstimate(nn.Module):
+    def __init__(self, in_feat=64, bias=True):
+
+        super(FlowEstimate, self).__init__()
+
+        self.block0 = FlowEstimate_block(in_feat=in_feat*2, hidden_feat=240, scale=4)
+        self.block1 = FlowEstimate_block(in_feat=in_feat*2+4, hidden_feat=150, scale=2)
+        self.block2 = FlowEstimate_block(in_feat=in_feat*2+4, hidden_feat=90, scale=2)
+    
+    def forward(self, x0, x1):
+        "image vision flow estimate"
+
+        flow0 = self.block0(torch.cat([x0, x1], dim=1))
+        # F1_large = flow0
+        # print(f"x0.shape: {x0.shape}")
+        # print(f"F1_large.shape: {F1_large.shape}")
+
+        # F1_large = F.interpolate(F1, scale_factor=2.0, mode="bilinear", align_corners=False) * 2.0
+
+        if False:
+            f01 = (flow0[:, :2] - flow0[:, 2:4]) // 2
+            f10 = (flow0[:, 2:4] - flow0[:, :2]) // 2
+            flow1 = self.block1(torch.cat((x0, x1, torch.cat([f01, f10], dim=1)), 1))
+        else:
+            flow1 = self.block1(torch.cat((x0, x1, flow0), 1))
+        F2_large = (flow0 + flow1)
+
+        # F2_large = F.interpolate(F2, scale_factor=2.0, mode="bilinear", align_corners=False) * 2.0
+        if False:
+            f01 = (F2_large[:, :2] - F2_large[:, 2:4]) // 2
+            f10 = (F2_large[:, 2:4] - F2_large[:, :2]) // 2
+            flow2 = self.block2(torch.cat((x0, x1, torch.cat([f01, f10], dim=1)), 1))
+        else:
+            flow2 = self.block2(torch.cat((x0, x1, F2_large), 1))
+        F3 = (flow0 + flow1 + flow2)
+
+        return F3
 
 
 class LF_Block(nn.Module):
@@ -719,148 +967,8 @@ class DeblurModule(nn.Module):
         return x
 
 
-class GaussianFilter(nn.Module):
-    def __init__(self, kernel_size=13, stride=1, padding=6):
-        super(GaussianFilter, self).__init__()
-        # initialize guassian kernel
-        mean = (kernel_size - 1) / 2.0
-        variance = ((kernel_size - 1) / 6.0) ** 2.0
-        # Create a x, y coordinate grid of shape (kernel_size, kernel_size, 2)
-        x_coord = torch.arange(kernel_size)
-        x_grid = x_coord.repeat(kernel_size).view(kernel_size, kernel_size)
-        y_grid = x_grid.t()
-        xy_grid = torch.stack([x_grid, y_grid], dim=-1).float()
-
-        # Calculate the 2-dimensional gaussian kernel
-        gaussian_kernel = torch.exp(-torch.sum((xy_grid - mean) ** 2., dim=-1) / (2 * variance))
-
-        # Make sure sum of values in gaussian kernel equals 1.
-        gaussian_kernel = gaussian_kernel / torch.sum(gaussian_kernel)
-
-        # Reshape to 2d depthwise convolutional weight
-        gaussian_kernel = gaussian_kernel.view(1, 1, kernel_size, kernel_size)
-        gaussian_kernel = gaussian_kernel.repeat(3, 1, 1, 1)
-
-        # create gaussian filter as convolutional layer
-        self.gaussian_filter = nn.Conv2d(3, 3, kernel_size, stride=stride, padding=padding, groups=3, bias=False)
-        self.gaussian_filter.weight.data = gaussian_kernel
-        self.gaussian_filter.weight.requires_grad = False
-
-    def forward(self, x):
-        return self.gaussian_filter(x)
-
-
-from basicsr.models.archs.swinir_arch import *
-class SwinBlock(nn.Module):
-    def __init__(self, img_size=64, patch_size=1, in_chans=3,
-                 embed_dim=64, out_chans=3, depths=[6, 6, 6, 6], num_heads=[6, 6, 6, 6],
-                 window_size=4, mlp_ratio=2., qkv_bias=True, qk_scale=None,
-                 drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
-                 norm_layer=nn.LayerNorm, ape=False, patch_norm=True,
-                 use_checkpoint=False, upscale=2, img_range=1., upsampler='', resi_connection='1conv',):
-        super(SwinBlock, self).__init__()
-
-        self.num_layers = len(depths)
-        self.embed_dim = embed_dim
-        self.ape = ape
-        self.patch_norm = patch_norm
-        self.num_features = embed_dim
-        self.mlp_ratio = mlp_ratio
-        
-        if in_chans != embed_dim:
-            self.conv_first = nn.Sequential(
-                nn.Conv2d(in_chans, embed_dim, kernel_size=3, stride=1, padding=1, bias=True),
-                nn.LeakyReLU(negative_slope=0.1, inplace=True),
-                nn.Conv2d(embed_dim, embed_dim, kernel_size=3, stride=1, padding=1, bias=True),
-            )
-
-        if out_chans != embed_dim:
-            self.conv_out = nn.Sequential(
-                nn.Conv2d(embed_dim, embed_dim, kernel_size=3, stride=1, padding=1, bias=True),
-                nn.LeakyReLU(negative_slope=0.1, inplace=True),
-                nn.Conv2d(embed_dim, out_chans, kernel_size=3, stride=1, padding=1, bias=True),
-            )
-
-        # split image into non-overlapping patches
-        self.patch_embed = PatchEmbed(
-            img_size=img_size, patch_size=patch_size, in_chans=embed_dim, embed_dim=embed_dim,
-            norm_layer=norm_layer if self.patch_norm else None)
-        num_patches = self.patch_embed.num_patches
-        patches_resolution = self.patch_embed.patches_resolution
-        self.patches_resolution = patches_resolution
-
-        # merge non-overlapping patches into image
-        self.patch_unembed = PatchUnEmbed(
-            img_size=img_size, patch_size=patch_size, in_chans=embed_dim, embed_dim=embed_dim,
-            norm_layer=norm_layer if self.patch_norm else None)
-
-        # absolute position embedding
-        if self.ape:
-            self.absolute_pos_embed = nn.Parameter(torch.zeros(1, num_patches, embed_dim))
-            trunc_normal_(self.absolute_pos_embed, std=.02)
-
-        self.pos_drop = nn.Dropout(p=drop_rate)
-
-        # stochastic depth
-        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]  # stochastic depth decay rule
-
-        # build Residual Swin Transformer blocks (RSTB)
-        self.layers = nn.ModuleList()
-
-        for i_layer in range(self.num_layers):
-            layer = RSTB(dim=embed_dim,
-                         input_resolution=(patches_resolution[0],
-                                           patches_resolution[1]),
-                         depth=depths[i_layer],
-                         num_heads=num_heads[i_layer],
-                         window_size=window_size,
-                         mlp_ratio=self.mlp_ratio,
-                         qkv_bias=qkv_bias, qk_scale=qk_scale,
-                         drop=drop_rate, attn_drop=attn_drop_rate,
-                         drop_path=dpr[sum(depths[:i_layer]):sum(depths[:i_layer + 1])],  # no impact on SR results
-                         norm_layer=norm_layer,
-                         downsample=None,
-                         use_checkpoint=use_checkpoint,
-                         img_size=img_size,
-                         patch_size=patch_size,
-                         resi_connection=resi_connection
-                         )
-            self.layers.append(layer)
-        self.norm = norm_layer(self.num_features)
-
-    def forward(self, x):
-        b, _, _, _ = x.shape
-        x_size = (x.shape[-2], x.shape[-1])
-
-        if hasattr(self, "conv_first"):
-            x = self.conv_first(x)
-
-        for layer in self.layers:
-            # transformer block
-            x = self.patch_embed(x)
-            if self.ape:
-                x = x + self.absolute_pos_embed
-            x = self.pos_drop(x)
-
-            x = layer(x, x_size)
-
-            x = self.norm(x)  # B L C
-            x = self.patch_unembed(x, x_size)
-            
-            x = x.view(b, *(x.shape[-3:]))
-
-        if hasattr(self, "conv_out"):
-            x = self.conv_out(x)
-
-        return x
-
-
 if __name__ == "__main__":
     x = torch.rand([6, 64, 96, 96])
     x_nbor = torch.rand([6, 64, 96, 96])
     fno = FNO(num_feat=64)
     y = fno(x, x_nbor)
-
-    # x = torch.rand([6, 64, 96, 96])
-    # model = RK2_Block(64)
-    # y = model(x)
