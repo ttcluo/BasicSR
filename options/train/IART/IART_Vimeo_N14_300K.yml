@@ -11,9 +11,9 @@ datasets:
   train:
     name: Vimeo90K
     type: Vimeo90KRecurrentDataset
-    dataroot_gt: datasets/vimeo90k/GT
-    dataroot_lq: datasets/vimeo90k/BIx4
-    meta_info_file: datasets/vimeo90k/meta_info_Vimeo90K_train_GT.txt
+    dataroot_gt: ../vsr_dataset/vimeo90k/GT
+    dataroot_lq: ../vsr_dataset/vimeo90k/BIx4
+    meta_info_file: ../vsr_dataset/vimeo90k/meta_info_Vimeo90K_train_GT.txt
     io_backend:
       type: disk
 
@@ -35,8 +35,8 @@ datasets:
   val:
     name: Vid4
     type: VideoRecurrentTestDataset
-    dataroot_gt: datasets/Vid4/GT
-    dataroot_lq: datasets/Vid4/BIx4
+    dataroot_gt: ../vsr_dataset/Vid4/GT
+    dataroot_lq: ../vsr_dataset/Vid4/BIx4
 
     cache_data: true
     io_backend:
@@ -59,7 +59,7 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: experiments/pretrained_models/IART_REDS_N16_600000.pth
+  pretrain_network_g: #experiments/pretrained_models/IART_REDS_N16_600000.pth
   strict_load_g: true
   resume_state: ~
 
