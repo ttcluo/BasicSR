@@ -377,3 +377,24 @@ class ModulatedDeformConvPack(ModulatedDeformConv):
         mask = torch.sigmoid(mask)
         return modulated_deform_conv(x, offset, mask, self.weight, self.bias, self.stride, self.padding, self.dilation,
                                      self.groups, self.deformable_groups)
+
+
+########添加至IBRB######
+
+class ModulatedDeformConvPackNOInnerOffset(ModulatedDeformConv):
+    """A ModulatedDeformable Conv Encapsulation that acts as normal Conv layers.
+
+    """
+
+    _version = 2
+
+    def __init__(self, *args, **kwargs):
+        super(ModulatedDeformConvPackNOInnerOffset, self).__init__(*args, **kwargs)
+
+    def forward(self, x):
+        o1, o2, mask = torch.chunk(out, 3, dim=1)
+        offset = torch.cat((o1, o2), dim=1)
+        mask = torch.sigmoid(mask)
+        return modulated_deform_conv(x, offset, mask, self.weight, self.bias,
+                                     self.stride, self.padding, self.dilation,
+                                     self.groups, self.deformable_groups)
