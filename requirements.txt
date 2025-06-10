@@ -15,5 +15,5 @@ tb-nightly==2.14.0a20230808
 tqdm==4.67.1
 yapf==0.43.0
 thop
-six=1.17.0
+six==1.17.0
 h5py
