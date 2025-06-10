@@ -8,7 +8,7 @@ from torch.nn.modules.batchnorm import _BatchNorm
 from basicsr.utils import get_root_logger
 
 try:
-    from basicsr.models.ops.dcn import (
+    from basicsr.ops.dcn import (
                                         ModulatedDeformConvPackNOInnerOffset,
                                         ModulatedDeformConvPack,
                                         modulated_deform_conv)
