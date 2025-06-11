@@ -313,3 +313,18 @@ def duf_downsample(x, kernel_size=13, scale=4):
     if squeeze_flag:
         x = x.squeeze(0)
     return x
+
+
+def recursive_glob(rootdir='.', suffix=''):
+    """Performs recursive glob with given suffix and rootdir.
+
+    Args:
+        rootdir: the root directory
+        suffix: the suffix to be searched
+
+    Returns:
+        list(str): the list of filenames that match the specified suffix within the directory tree rooted at rootdir.
+    """
+    return [filename
+            for looproot, _, filenames in os.walk(rootdir)
+            for filename in filenames if filename.endswith(suffix)]
