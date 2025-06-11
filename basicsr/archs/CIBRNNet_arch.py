@@ -41,8 +41,8 @@ class CIBRNNet(nn.Module):
             nn.Conv2d(num_feat, num_feat*3, kernel_size=1,stride=1,padding=0,bias=True),
 
         )
-        self.for_dcn = DCN(num_feat, num_feat, 3, padding=1, deformable_groups=16)
-        self.bac_dcn = DCN(num_feat, num_feat, 3, padding=1, deformable_groups=16)
+        self.for_dcn = DCN(num_feat, num_feat, 3, 1,padding=1, deformable_groups=16)
+        self.bac_dcn = DCN(num_feat, num_feat, 3, 1,padding=1, deformable_groups=16)
         self.dfe = ConvResBlock(num_feat, num_feat, 3, "ResidualBlock_CA")
 
         # feat extract
