@@ -398,3 +398,36 @@ class DCNPooling(DCNv2Pooling):
             self.sample_per_part,
             self.trans_std,
         )
+
+class DCN_sep(DCNv2):
+    '''Use other features to generate offsets and masks'''
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, dilation=1,
+                 deformable_groups=1):
+        super(DCN_sep, self).__init__(in_channels, out_channels, kernel_size, stride, padding,
+                                      dilation, deformable_groups)
+
+        channels_ = self.deformable_groups * 3 * \
+            self.kernel_size[0] * self.kernel_size[1]
+        self.conv_offset_mask = nn.Conv2d(self.in_channels, channels_, kernel_size=self.kernel_size,
+                                          stride=self.stride, padding=self.padding, bias=True)
+        self.init_offset()
+
+    def init_offset(self):
+        self.conv_offset_mask.weight.data.zero_()
+        self.conv_offset_mask.bias.data.zero_()
+
+    def forward(self, input, fea):
+        '''input: input features for deformable conv
+        fea: other features used for generating offsets and mask'''
+        out = self.conv_offset_mask(fea)
+        o1, o2, mask = torch.chunk(out, 3, dim=1)
+        offset = torch.cat((o1, o2), dim=1)
+
+        # offset_mean = torch.mean(torch.abs(offset))
+        # if offset_mean > 100:
+        #     logger.warning('Offset mean is {}, larger than 100.'.format(offset_mean))
+
+        mask = torch.sigmoid(mask)
+        return dcn_v2_conv(input, offset, mask, self.weight, self.bias, self.stride, self.padding,
+                           self.dilation, self.deformable_groups)

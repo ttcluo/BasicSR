@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from .DCNv2.dcn_v2 import DCN_sep
+from basicsr.ops.DCNv2_latest.dcn_v2 import DCN_sep
 from .arch_util import make_layer, ResidualBlockNoBN
 
 class EMB(nn.Module):
@@ -230,7 +230,7 @@ class EMA_Encoder(nn.Module):
             # extract inversed events features
             lr_event_t = self.EventSubHead_1(lr_event_t)
             event_inverse_t = self.EventSubHead_2(event_inverse_t)
-            
+
             image_feature.append(self.epcd_align(
                 fea1, fea2, lr_event_t, event_inverse_t
             ))
