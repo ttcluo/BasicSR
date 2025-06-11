@@ -6,7 +6,7 @@ from torch.autograd import Function
 from torch.autograd.function import once_differentiable
 from torch.nn import functional as F
 from torch.nn.modules.utils import _pair, _single
-# from . import deform_conv_ext
+from . import deform_conv_ext
 
 
 BASICSR_JIT = os.getenv('BASICSR_JIT')
