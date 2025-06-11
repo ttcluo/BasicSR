@@ -476,7 +476,34 @@ class DCNv2Pack(ModulatedDeformConvPack):
                                      self.stride, self.padding, self.dilation,
                                      self.groups, self.deformable_groups)
 
+# class DCNv2(ModulatedDeformConvPackNOInnerOffset):
+#     """Modulated deformable conv for deformable alignment.
 
+#     Different from the official DCNv2Pack, which generates offsets and masks
+#     from the preceding features, this DCNv2Pack takes another different
+#     features to generate offsets and masks.
+
+#     Ref:
+#         Delving Deep into Deformable Alignment in Video Super-Resolution.
+#     """
+
+#     def forward(self, x, feat):
+#         # out = self.conv_offset(feat)
+#         o1, o2, mask = torch.chunk(feat, 3, dim=1)
+#         offset = torch.cat((o1, o2), dim=1)
+#         mask = torch.sigmoid(mask)
+
+#         # offset_absmean = torch.mean(torch.abs(offset))
+#         # if offset_absmean > 50:
+#         #     offset = self.conv_adjust(offset)
+#         # if offset_absmean > 50:
+#         #     logger = get_root_logger()
+#         #     logger.warning(
+#         #         f'Offset abs mean is {offset_absmean}, larger than 50.')
+
+#         return modulated_deform_conv(x.contiguous(), offset.contiguous(), mask.contiguous(), self.weight, self.bias,
+#                                      self.stride, self.padding, self.dilation,
+#                                      self.groups, self.deformable_groups)
 class DCNv2(ModulatedDeformConvPackNOInnerOffset):
     """Modulated deformable conv for deformable alignment.
 
