@@ -43,8 +43,9 @@ path:
 
 # validation settings
 val:
-  val_freq: !!float 5e3
+  # val_freq: !!float 5e3
   save_img: true
+  suffix: ~  # add suffix to saved images, if None, use exp name
 
   metrics:
     psnr: # metric name, can be arbitrary
