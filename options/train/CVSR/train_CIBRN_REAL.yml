@@ -1,5 +1,5 @@
 # general settings
-name: CIBRN_2e-4_REAL_BI_x4
+name: CIBRN_REAL_GT_pre
 experiments_root: exp_video_real
 model_type: BasicVSRModel  # BasicVSRModel BasicVSRGanModel
 scale: 1
@@ -11,8 +11,8 @@ datasets:
   train:
     name: REAL
     type: REALRecurrentDataset
-    dataroot_gt: ../vsr_dataset/RealVSR/GT_YCbCr
-    dataroot_lq: ../vsr_dataset/RealVSR/LQ_YCbCr
+    dataroot_gt: ../vsr_dataset/RealVSR/GT
+    dataroot_lq: ../vsr_dataset/RealVSR/LQ
     meta_info_file: ../vsr_dataset/RealVSR/meta_info_REAL_GT.txt
     io_backend:
       type: disk
@@ -36,8 +36,8 @@ datasets:
   val:
     name: REAL
     type: REALRecurrentDataset
-    dataroot_gt: ../vsr_dataset/RealVSR/GT_YCbCr_test
-    dataroot_lq: ../vsr_dataset/RealVSR/LQ_YCbCr_test
+    dataroot_gt: ../vsr_dataset/RealVSR/GT_test
+    dataroot_lq: ../vsr_dataset/RealVSR/LQ_test
     meta_info_file: ../vsr_dataset/RealVSR/meta_info_REAL_test_GT.txt
     io_backend:
       type: disk
@@ -62,9 +62,9 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: #experiments/CIBRN_2e-4_REAL_BI_x4/models/net_g_65000.pth
+  pretrain_network_g: experiments/CIBRN_2e-4_REAL_BI_x4/models/net_g_315000.pth
   strict_load_g: true
-  resume_state: experiments/CIBRN_2e-4_REAL_BI_x4/training_states/315000.state
+  resume_state: #experiments/CIBRN_2e-4_REAL_BI_x4/training_states/315000.state
 
 # training settings
 train:
