@@ -218,17 +218,18 @@ class DCNv2Pack(ModulatedDeformConvPack):
         offset = torch.cat((o1, o2), dim=1)
         mask = torch.sigmoid(mask)
 
-        offset_absmean = torch.mean(torch.abs(offset))
-        if offset_absmean > 50:
-            logger = get_root_logger()
-            logger.warning(f'Offset abs mean is {offset_absmean}, larger than 50.')
+        # offset_absmean = torch.mean(torch.abs(offset))
+        # if offset_absmean > 50:
+        #     logger = get_root_logger()
+        #     logger.warning(f'Offset abs mean is {offset_absmean}, larger than 50.')
 
+        # if LooseVersion(torchvision.__version__) >= LooseVersion('0.9.0'):
+        #     return torchvision.ops.deform_conv2d(x, offset, self.weight, self.bias, self.stride, self.padding,
+        #                                          self.dilation, mask)
         if LooseVersion(torchvision.__version__) >= LooseVersion('0.9.0'):
-            return torchvision.ops.deform_conv2d(x, offset, self.weight, self.bias, self.stride, self.padding,
-                                                 self.dilation, mask)
+            return torchvision.ops.deform_conv2d(x.contiguous(), offset.contiguous(), self.weight, self.bias, self.stride, self.padding,self.dilation, mask.contiguous())
         else:
-            return modulated_deform_conv(x, offset, mask, self.weight, self.bias, self.stride, self.padding,
-                                         self.dilation, self.groups, self.deformable_groups)
+            return modulated_deform_conv(x, offset, mask, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups, self.deformable_groups)
 
 # class DCNv2Pack(ModulatedDeformConvPack):
 #     """Modulated deformable conv for deformable alignment.
