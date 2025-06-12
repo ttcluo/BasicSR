@@ -11,8 +11,8 @@ datasets:
   test:
     name: REAL
     type: REALRecurrentDataset
-    dataroot_gt: ../vsr_dataset/RealVSR/GT_YCbCr_test
-    dataroot_lq: ../vsr_dataset/RealVSR/LQ_YCbCr_test
+    dataroot_gt: ../vsr_dataset/RealVSR/GT_test
+    dataroot_lq: ../vsr_dataset/RealVSR/LQ_test
     meta_info_file: ../vsr_dataset/RealVSR/meta_info_REAL_test_GT.txt
     io_backend:
       type: disk
