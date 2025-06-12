@@ -37,14 +37,14 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: experiments/CIBRN_2e-4_REAL_BI_x4/models/net_g_55000.pth
+  pretrain_network_g: experiments/CIBRN_2e-4_REAL_BI_x4/models/net_g_315000.pth
   strict_load_g: true
 
 
 # validation settings
 val:
   val_freq: !!float 5e3
-  save_img: false
+  save_img: true
 
   metrics:
     psnr: # metric name, can be arbitrary
