@@ -62,8 +62,8 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: experiments/CIBRN_REAL_GT_pre_archived_20250612_210045/models/net_g_5000.pth
-  strict_load_g: true
+  pretrain_network_g: #experiments/CIBRN_REAL_GT_pre_archived_20250612_210045/models/net_g_5000.pth
+  strict_load_g: false
   resume_state: #experiments/IBRN_2e-4_REAL_BI_x4/training_states/200000.state
 
 # training settings
