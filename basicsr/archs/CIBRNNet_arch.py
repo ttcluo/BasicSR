@@ -6,7 +6,7 @@ import numpy as np
 from einops import rearrange
 
 from basicsr.archs.arch_util_ib import ResidualBlockNoBN, flow_warp2, make_layer, FlowEstimate, DeblurModule
-from basicsr.archs.arch_util import DCNv2Pack as DCN
+from basicsr.archs.arch_util_old import DCNv2Pack as DCN
 from basicsr.utils.registry import ARCH_REGISTRY
 
 @ARCH_REGISTRY.register()
