@@ -195,7 +195,7 @@ class ConvResidualBlocks(nn.Module):
 
 
 @ARCH_REGISTRY.register()
-class MADIconVSR(nn.Module):
+class MADNet(nn.Module):
     """Our MADNet mainly borrows from IconVSR.
 
     Args:
