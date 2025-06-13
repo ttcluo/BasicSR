@@ -13,11 +13,11 @@ manual_seed: 0
 datasets:
   train:
     name: REDS
-    type: REDSRecurrentDataset
+    type: MADREDSRecurrentDataset
     dataroot_gt: ../vsr_dataset/jilin_189/train/GT
     dataroot_lq: ../vsr_dataset/jilin_189/train/LR4x
     meta_info_file: ../vsr_dataset/jilin_189/meta_info_jilin189_GT.txt  # training Jilin189
-    val_partition: REDS4  # you should modify the file of REDS4 to load Jilin12
+    val_partition: Jilin12  # you should modify the file of REDS4 to load Jilin12
     test_mode: False
     io_backend:
       type: disk
@@ -31,12 +31,12 @@ datasets:
 
     # data loader
     num_worker_per_gpu: 0
-    batch_size_per_gpu: 1
+    batch_size_per_gpu: 4
     dataset_enlarge_ratio: 200
     prefetch_mode: ~
 
   val:
-    name: REDS4
+    name: Jilin12
     type: VideoRecurrentTestDataset
     dataroot_gt: ../vsr_dataset/jilin_189/eval/GT  # validation Jilin12
     dataroot_lq: ../vsr_dataset/jilin_189/eval/LR4x
