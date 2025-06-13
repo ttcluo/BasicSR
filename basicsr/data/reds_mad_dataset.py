@@ -261,7 +261,7 @@ class MADREDSRecurrentDataset(data.Dataset):
             val_partition = ['000', '011', '015', '020']
         elif opt['val_partition'] == 'official':
             val_partition = [f'{v:03d}' for v in range(240, 270)]
-        elif opt['val_partition'] == 'jilin002':
+        elif opt['val_partition'] == 'Jilin12':
             val_partition = ['002']
         else:
             raise ValueError(f'Wrong validation partition {opt["val_partition"]}.'
