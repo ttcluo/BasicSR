@@ -36,7 +36,7 @@ datasets:
     prefetch_mode: ~
 
   val:
-    name: Jilin12
+    name: REDS4
     type: VideoRecurrentTestDataset
     dataroot_gt: ../vsr_dataset/jilin_189/eval/GT  # validation Jilin12
     dataroot_lq: ../vsr_dataset/jilin_189/eval/LR4x
