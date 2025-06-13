@@ -12,6 +12,7 @@ from basicsr.archs.arch_util import ResidualBlockNoBN, flow_warp, make_layer
 from basicsr.archs.edvr_arch import PCDAlignment, TSAFusion
 from basicsr.archs.spynet_arch import SpyNet
 from thop import profile
+from basicsr.utils import get_root_logger
 
 #CMADNet 添加C.T和C.A模块
 class SimpleGate(nn.Module):
@@ -554,9 +555,12 @@ def print_network(net):
 
 if __name__ == '__main__':
     input = torch.rand(1, 15, 3, 160, 160).cuda()  # B T C H W
-    model = MADNet().cuda()
+    model = CMADIconVSR().cuda()
 
     # FLOPs and Parameters
     flops, params = profile(model, inputs=(input,))
+    logger = get_root_logger()
+    logger.info("Param: {} M".format(params/1e6))
+    logger.info("FLOPs: {} G".format(flops/1e9))
     print("Param: {} M".format(params/1e6))
     print("FLOPs: {} G".format(flops/1e9))

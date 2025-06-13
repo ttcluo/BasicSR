@@ -12,6 +12,7 @@ from basicsr.archs.arch_util import ResidualBlockNoBN, flow_warp, make_layer
 from basicsr.archs.edvr_arch import PCDAlignment, TSAFusion
 from basicsr.archs.spynet_arch import SpyNet
 from thop import profile
+from basicsr.utils import get_root_logger
 class SimpleGate(nn.Module):
     """简单门控机制：将输入通道分成两半并逐元素相乘"""
     def forward(self, x):
@@ -520,5 +521,8 @@ if __name__ == '__main__':
 
     # FLOPs and Parameters
     flops, params = profile(model, inputs=(input,))
+    logger = get_root_logger()
+    logger.info("Param: {} M".format(params/1e6))
+    logger.info("FLOPs: {} G".format(flops/1e9))
     print("Param: {} M".format(params/1e6))
     print("FLOPs: {} G".format(flops/1e9))

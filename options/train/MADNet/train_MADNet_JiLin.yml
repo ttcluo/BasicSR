@@ -30,8 +30,8 @@ datasets:
     use_rot: true
 
     # data loader
-    num_worker_per_gpu: 0
-    batch_size_per_gpu: 4
+    num_worker_per_gpu: 6
+    batch_size_per_gpu: 1
     dataset_enlarge_ratio: 200
     prefetch_mode: ~
 
