@@ -43,7 +43,7 @@ datasets:
 
 # network structures
 network_g:
-  type: MHAFNet
+  type: CMHAVSR
   mid_channels: 64
   num_blocks: 7
   is_low_res_input: true
