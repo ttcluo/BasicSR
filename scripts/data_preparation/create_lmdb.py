@@ -11,12 +11,10 @@ def create_lmdb_for_div2k():
     Usage:
         Before run this script, please run `extract_subimages.py`.
         Typically, there are four folders to be processed for DIV2K dataset.
-
             * DIV2K_train_HR_sub
             * DIV2K_train_LR_bicubic/X2_sub
             * DIV2K_train_LR_bicubic/X3_sub
             * DIV2K_train_LR_bicubic/X4_sub
-
         Remember to modify opt configurations according to your settings.
     """
     # HR images
@@ -67,10 +65,8 @@ def create_lmdb_for_reds():
     Usage:
         Before run this script, please run :file:`merge_reds_train_val.py`.
         We take two folders for example:
-
             * train_sharp
             * train_sharp_bicubic
-
         Remember to modify opt configurations according to your settings.
     """
     # train_sharp
@@ -154,6 +150,27 @@ def prepare_keys_vimeo90k(folder_path, train_list_path, mode):
 
     return img_path_list, keys
 
+def create_lmdb_for_sat_mtb_vsr():
+    """Create lmdb files for SAT-MTB-VSR dataset.
+
+    Usage:
+        Before run this script, please run `merge_reds_train_val.py`.
+        We take two folders for example:
+            train_sharp
+            train_sharp_bicubic
+        Remember to modify opt configurations according to your settings.
+    """
+    # train_sharp
+    folder_path = './vsr_dataset/SAT-MTB-VSR/train/GT'
+    lmdb_path = './vsr_dataset/SAT-MTB-VSR/train/GT.lmdb'
+    img_path_list, keys = prepare_keys_reds(folder_path)
+    make_lmdb_from_imgs(folder_path, lmdb_path, img_path_list, keys, multiprocessing_read=True)
+
+    # train_sharp_bicubic
+    folder_path = './vsr_dataset/SAT-MTB-VSR/train/LR4xBicubic'
+    lmdb_path = './vsr_dataset/SAT-MTB-VSR/train/LR4xBicubic.lmdb'
+    img_path_list, keys = prepare_keys_reds(folder_path)
+    make_lmdb_from_imgs(folder_path, lmdb_path, img_path_list, keys, multiprocessing_read=True)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -161,7 +178,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--dataset',
         type=str,
-        help=("Options: 'DIV2K', 'REDS', 'Vimeo90K' You may need to modify the corresponding configurations in codes."))
+        help=("Options: 'DIV2K', 'REDS', 'Vimeo90K' ,'SAT-MTB' You may need to modify the corresponding configurations in codes."))
     args = parser.parse_args()
     dataset = args.dataset.lower()
     if dataset == 'div2k':
@@ -170,5 +187,7 @@ if __name__ == '__main__':
         create_lmdb_for_reds()
     elif dataset == 'vimeo90k':
         create_lmdb_for_vimeo90k()
+    elif dataset == 'SAT-MTB':
+        create_lmdb_for_sat_mtb_vsr()
     else:
         raise ValueError('Wrong dataset.')
