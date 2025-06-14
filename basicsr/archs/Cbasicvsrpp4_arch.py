@@ -90,8 +90,8 @@ class CBasicVSRPlusPlus4(nn.Module):
         )
         self.convreal = nn.Conv2d(mid_channels,mid_channels,3,1,1,bias=True)
         self.convimg = nn.Conv2d(mid_channels, mid_channels, 3, 1, 1, bias=True)
-        
         self.fusion = nn.Conv2d(mid_channels * 2, mid_channels, 1, 1, 0, bias=True)
+
         self.upconv1 = nn.Conv2d(mid_channels, mid_channels * 4, 3, 1, 1, bias=True)
         self.upconv2 = nn.Conv2d(mid_channels, 64 * 4, 3, 1, 1, bias=True)
         self.pixel_shuffle = nn.PixelShuffle(2)
@@ -267,7 +267,7 @@ class CBasicVSRPlusPlus4(nn.Module):
             hrI = torch.cat((hr[0],hr[2],hr[4]), dim=1)
             if self.cpu_cache:
                 hr = hr.cuda()
-            
+            #C.T and C.A
             real,img = self.reconstruction(hrR-hrI,hrR+hrI)
             sreal = real.unsqueeze(2)
             simg = img.unsqueeze(2)
@@ -282,6 +282,7 @@ class CBasicVSRPlusPlus4(nn.Module):
             attimg = img+self.convimg(img)
             out = torch.cat([attreal, attimg], dim=1)
             out = self.fusion(out)
+
             hr = self.lrelu(self.pixel_shuffle(self.upconv1(out)))
             hr = self.lrelu(self.pixel_shuffle(self.upconv2(hr)))
             hr = self.lrelu(self.conv_hr(hr))
@@ -299,7 +300,7 @@ class CBasicVSRPlusPlus4(nn.Module):
 
         return torch.stack(outputs, dim=1)
 
-    
+
     def forward(self, lqs):
         """Forward function for BasicVSR++.
 
