@@ -161,14 +161,14 @@ def create_lmdb_for_sat_mtb_vsr():
         Remember to modify opt configurations according to your settings.
     """
     # train_sharp
-    folder_path = './vsr_dataset/SAT-MTB-VSR/train/GT'
-    lmdb_path = './vsr_dataset/SAT-MTB-VSR/train/GT.lmdb'
+    folder_path = '/data/luochuan/vsr_dataset/SAT-MTB-VSR/train/GT'
+    lmdb_path = '/data/luochuan/vsr_dataset/SAT-MTB-VSR/train/GT.lmdb'
     img_path_list, keys = prepare_keys_reds(folder_path)
     make_lmdb_from_imgs(folder_path, lmdb_path, img_path_list, keys, multiprocessing_read=True)
 
     # train_sharp_bicubic
-    folder_path = './vsr_dataset/SAT-MTB-VSR/train/LR4xBicubic'
-    lmdb_path = './vsr_dataset/SAT-MTB-VSR/train/LR4xBicubic.lmdb'
+    folder_path = '/data/luochuan/vsr_dataset/SAT-MTB-VSR/train/LR4xBicubic'
+    lmdb_path = '/data/luochuan/vsr_dataset/SAT-MTB-VSR/train/LR4xBicubic.lmdb'
     img_path_list, keys = prepare_keys_reds(folder_path)
     make_lmdb_from_imgs(folder_path, lmdb_path, img_path_list, keys, multiprocessing_read=True)
 
