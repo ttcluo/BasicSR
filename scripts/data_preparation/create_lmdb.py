@@ -178,7 +178,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--dataset',
         type=str,
-        help=("Options: 'DIV2K', 'REDS', 'Vimeo90K' ,'SAT-MTB' You may need to modify the corresponding configurations in codes."))
+        help=("Options: 'DIV2K', 'REDS', 'Vimeo90K' ,'SATMTB' You may need to modify the corresponding configurations in codes."))
     args = parser.parse_args()
     dataset = args.dataset.lower()
     if dataset == 'div2k':
@@ -187,7 +187,7 @@ if __name__ == '__main__':
         create_lmdb_for_reds()
     elif dataset == 'vimeo90k':
         create_lmdb_for_vimeo90k()
-    elif dataset == 'SAT-MTB':
+    elif dataset == 'satmtb':
         create_lmdb_for_sat_mtb_vsr()
     else:
         raise ValueError('Wrong dataset.')
