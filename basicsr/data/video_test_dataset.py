@@ -282,8 +282,9 @@ class VideoRecurrentTestDataset(VideoTestDataset):
     def __len__(self):
         return len(self.folders)
 
+
 ##RASVSR
-DATASET_REGISTRY.register()
+@DATASET_REGISTRY.register()
 class VideoTestSVSRDataset(data.Dataset):
     """Satellite Video test dataset.
     Args:
