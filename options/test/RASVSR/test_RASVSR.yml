@@ -8,8 +8,8 @@ datasets:
   test:
     name: SAT-MTB-VSR
     type: VideoRecurrentTestSVSRDataset
-    dataroot_gt: ./datasets/SAT-MTB-VSR/val/GT
-    dataroot_lq: ./datasets/SAT-MTB-VSR/val/LR4xBicubic
+    dataroot_gt: ../vsr_dataset/SAT-MTB-VSR/val/GT
+    dataroot_lq: ../vsr_dataset/SAT-MTB-VSR/val/LR4xBicubic
     meta_info_file: basicsr/data/meta_info/meta_info_SAT-MTB-VSR_val_GT.txt
 
     cache_data: true
