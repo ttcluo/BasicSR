@@ -51,7 +51,7 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: experiments/CMHAVSR_REDS/models/net_g_120000.pth
+  pretrain_network_g: #experiments/CMHAVSR_REDS/models/net_g_120000.pth
   strict_load_g: true
   resume_state: ~
 
