@@ -1,5 +1,5 @@
 # general settings
-name: CMHAVSR_Vimeo-90K_BD
+name: CMHAVSR_Vimeo-90K_BI
 model_type: VideoRecurrentModel
 scale: 4
 num_gpu: 2  # official: 8 GPUs
@@ -11,7 +11,7 @@ datasets:
     name: Vimeo90K
     type: Vimeo90KRecurrentDataset
     dataroot_gt: ../vsr_dataset/vimeo90k/GT
-    dataroot_lq: ../vsr_dataset/vimeo90k/BDx4
+    dataroot_lq: ../vsr_dataset/vimeo90k/BIx4
     meta_info_file: ../vsr_dataset/vimeo90k/meta_info_Vimeo90K_train_GT.txt
     io_backend:
       type: disk
@@ -33,7 +33,7 @@ datasets:
     name: Vid4
     type: VideoRecurrentTestDataset
     dataroot_gt: ../vsr_dataset/Vid4/GT
-    dataroot_lq: ../vsr_dataset/Vid4/BDx4
+    dataroot_lq: ../vsr_dataset/Vid4/BIx4
 
     cache_data: true
     io_backend:
