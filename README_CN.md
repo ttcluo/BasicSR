@@ -173,3 +173,5 @@ PORT=4323 CUDA_VISIBLE_DEVICES=0 numactl --cpunodebind=0 --membind=0 bash ./scri
 
 tensorboard --logdir=/data/luochuan/BasicSR --port=6006
 ssh -L 16005:localhost:6006 luochuan@20.66.31.1
+
+new
