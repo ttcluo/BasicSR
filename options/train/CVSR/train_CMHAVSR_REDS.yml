@@ -53,7 +53,7 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: experiments/CMHAVSR_REDS_archived_20250616_135616/training_states/175000.state
+  pretrain_network_g: experiments/CMHAVSR_REDS_archived_20250616_135616/models/net_g_175000.pth
   strict_load_g: false
   resume_state: #experiments/MHAVSR_REDS/training_states/55000.state
 # training settings
