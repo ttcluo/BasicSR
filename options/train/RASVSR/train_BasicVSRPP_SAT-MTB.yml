@@ -1,4 +1,4 @@
-name: CRASVSR_SAT-MTB_tun
+name: BasicVSRPP_SAT-MTB
 model_type: VideoRecurrentModel
 scale: 4
 num_gpu: 1
@@ -16,7 +16,7 @@ datasets:
     io_backend:
       type: lmdb
 
-    num_frame: 60
+    num_frame: 30
     gt_size: 256
     interval_list: [1]
     random_reverse: false
@@ -44,7 +44,7 @@ datasets:
 
 # network structures
 network_g:
-  type: CGRASVSR
+  type: BasicVSRPlusPlus
   mid_channels: 64
   num_blocks: 7
   is_low_res_input: true
@@ -52,7 +52,7 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: experiments/CGRASVSR_SAT-MTB/models/net_g_100000.pth
+  pretrain_network_g: ~
   strict_load_g: true
   resume_state: ~
 
@@ -61,7 +61,7 @@ train:
   ema_decay: 0.999
   optim_g:
     type: Adam
-    lr: !!float 2e-5
+    lr: !!float 2e-4
     weight_decay: 0
     betas: [0.9, 0.99]
 
@@ -91,15 +91,6 @@ val:
     psnr: # metric name, can be arbitrary
       type: calculate_psnr
       crop_border: 0
-      test_y_channel: false
-    ssim:
-      type: calculate_ssim
-      crop_border: 0
-      test_y_channel: false
-    niqe:
-      type: calculate_niqe
-      crop_border: 0
-      num_thread: 8
       test_y_channel: false
 
 # logging settings
