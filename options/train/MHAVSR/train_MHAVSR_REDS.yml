@@ -55,7 +55,7 @@ network_g:
 path:
   pretrain_network_g: ~
   strict_load_g: true
-  resume_state: experiments/MHAVSR_REDS/training_states/55000.state
+  resume_state: experiments/MHAVSR_REDS/training_states/185000.state
 # training settings
 train:
   ema_decay: 0.999
