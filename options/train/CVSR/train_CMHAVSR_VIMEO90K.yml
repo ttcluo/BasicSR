@@ -24,8 +24,8 @@ datasets:
     use_rot: true
     flip_sequence: true
     # data loader
-    num_worker_per_gpu: 16
-    batch_size_per_gpu: 4
+    num_worker_per_gpu: 8
+    batch_size_per_gpu: 2
     dataset_enlarge_ratio: 1
     prefetch_mode: ~
 
@@ -51,7 +51,7 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: experiments/CMHAVSR_REDS/models/net_g_175000.pth
+  pretrain_network_g: #experiments/CMHAVSR_REDS/models/net_g_175000.pth
   strict_load_g: true
   resume_state: ~
 
@@ -60,7 +60,7 @@ train:
   ema_decay: 0.999
   optim_g:
     type: Adam
-    lr: !!float 4e-4
+    lr: !!float 3e-4
     weight_decay: 0
     betas: [0.9, 0.99]
 
