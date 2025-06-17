@@ -62,7 +62,7 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: experiments/CIBRN_REAL_YCbCr_tun3/models/net_g_5000.pth
+  pretrain_network_g: experiments/CIBRN_REAL_YCbCr_tun3_archived_20250617_131859/models/net_g_5000.pth
   strict_load_g: true
   resume_state: #experiments/CIBRN_2e-4_REAL_BI_x4/training_states/315000.state
 
