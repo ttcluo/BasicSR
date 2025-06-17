@@ -1,4 +1,4 @@
-name: BasicVSRPP_SAT-MTB
+name: CBasicVSRPP_SAT-MTB
 model_type: VideoRecurrentModel
 scale: 4
 num_gpu: 1
@@ -16,7 +16,7 @@ datasets:
     io_backend:
       type: lmdb
 
-    num_frame: 100
+    num_frame: 30
     gt_size: 256
     interval_list: [1]
     random_reverse: false
