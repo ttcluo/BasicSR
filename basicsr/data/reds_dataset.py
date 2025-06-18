@@ -388,7 +388,7 @@ class RealVSRRecurrentDataset(data.Dataset):
     """
 
     def __init__(self, opt):
-        super(REDSRecurrentDataset, self).__init__()
+        super(RealVSRRecurrentDataset, self).__init__()
         self.opt = opt
         self.gt_root, self.lq_root = Path(opt['dataroot_gt']), Path(opt['dataroot_lq'])
         self.num_frame = opt['num_frame']
