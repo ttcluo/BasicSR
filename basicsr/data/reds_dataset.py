@@ -397,7 +397,7 @@ class RealVSRRecurrentDataset(data.Dataset):
         with open(opt['meta_info_file'], 'r') as fin:
             for line in fin:
                 folder, frame_num, _ = line.split(' ')
-                self.keys.extend([f'{folder}/{i:08d}' for i in range(int(frame_num))])
+                self.keys.extend([f'{folder}/{i:05d}' for i in range(int(frame_num))])
 
         # remove the video clips used in validation
         if opt['val_partition'] == 'REALS50':
@@ -451,8 +451,8 @@ class RealVSRRecurrentDataset(data.Dataset):
 
         # ensure not exceeding the borders
         start_frame_idx = int(frame_name)
-        if start_frame_idx > 100 - self.num_frame * interval:
-            start_frame_idx = random.randint(0, 100 - self.num_frame * interval)
+        if start_frame_idx > 50 - self.num_frame * interval:
+            start_frame_idx = random.randint(0, 50 - self.num_frame * interval)
         end_frame_idx = start_frame_idx + self.num_frame * interval
 
         neighbor_list = list(range(start_frame_idx, end_frame_idx, interval))
