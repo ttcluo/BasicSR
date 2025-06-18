@@ -302,7 +302,7 @@ class ConvResidualBlocks(nn.Module):
 #     output,_=network(inputdata)
 #     print(output.shape)
 
-@ARCH_REGISTRY.register()
+# @ARCH_REGISTRY.register()
 class CIconVSR(nn.Module):
     """IconVSR, proposed also in the BasicVSR paper
     改进的IconVSR模型，引入复数域特征表示和3D注意力机制
