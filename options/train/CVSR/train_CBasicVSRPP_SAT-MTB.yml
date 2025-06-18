@@ -1,49 +1,42 @@
-# GENERATE TIME: Thu Jun  2 03:10:53 2022
-# CMD:
-# train.py
-
-# general settings
-name: CVSR_Vimeo90K_BIx4
+name: CBasicVSRPP_SAT-MTB
 model_type: VideoRecurrentModel
 scale: 4
-num_gpu: 1  # set num_gpu: 0 for cpu mode
+num_gpu: 1
 manual_seed: 0
 
 # dataset and data loader settings
 datasets:
   train:
-    name: Vimeo90K
-    type: Vimeo90KRecurrentDataset
-    dataroot_gt: ../vsr_dataset/vimeo90k/GT
-    dataroot_lq: ../vsr_dataset/vimeo90k/BIx4
-    meta_info_file: ../vsr_dataset/vimeo90k/meta_info_Vimeo90K_train_GT.txt
+    name: SAT-MTB-VSR
+    type: SVSRRecurrentDataset
+    dataroot_gt: ../vsr_dataset/SAT-MTB-VSR/train/GT.lmdb
+    dataroot_lq: ../vsr_dataset/SAT-MTB-VSR/train/LR4xBicubic.lmdb
+    meta_info_file: basicsr/data/meta_info/meta_info_SAT-MTB-VSR_train_GT.txt
+    test_mode: False
     io_backend:
-      type: disk
+      type: lmdb
 
-    num_frame: -1
+    num_frame: 30
     gt_size: 256
     interval_list: [1]
     random_reverse: false
     use_hflip: true
     use_rot: true
-    flip_sequence: true
 
     # data loader
-    use_shuffle: true
-    num_worker_per_gpu: 8
-    batch_size_per_gpu: 8
-    dataset_enlarge_ratio: 200
-    cache_size: 1000
-    prefetch_mode: cuda
-    pin_memory: true
+    num_worker_per_gpu: 4
+    batch_size_per_gpu: 4
+    dataset_enlarge_ratio: 1
+    prefetch_mode: ~
 
   val:
-    name: Vid4
-    type: VideoRecurrentTestDataset
-    dataroot_gt: ../vsr_dataset/Vid4/GT
-    dataroot_lq: ../vsr_dataset/Vid4/BIx4
+    name: SAT-MTB-VSR
+    type: VideoRecurrentTestSVSRDataset
+    dataroot_gt: ../vsr_dataset/SAT-MTB-VSR/val/GT
+    dataroot_lq: ../vsr_dataset/SAT-MTB-VSR/val/LR4xBicubic
+    meta_info_file: basicsr/data/meta_info/meta_info_SAT-MTB-VSR_val_GT.txt
 
-    cache_data: True
+    cache_data: true
     io_backend:
       type: disk
 
@@ -51,20 +44,20 @@ datasets:
 
 # network structures
 network_g:
-  type: CVSR
-  num_feat: 64
-  num_block: 30
+  type: CBasicVSRPlusPlus4
+  mid_channels: 64
+  num_blocks: 7
+  is_low_res_input: true
   spynet_path: experiments/pretrained_models/flownet/spynet_sintel_final-3d2a1287.pth
 
 # path
 path:
   pretrain_network_g: ~
   strict_load_g: true
-  resume_state: #experiments/CVSR_Vimeo90K_BIx4/training_states/60000.state
+  resume_state: ~
 
 # training settings
 train:
-  pcie_monitor: false  # 启用 PCIe 带宽监控
   ema_decay: 0.999
   optim_g:
     type: Adam
@@ -74,14 +67,14 @@ train:
 
   scheduler:
     type: CosineAnnealingRestartLR
-    periods: [300000]
+    periods: [100000]
     restart_weights: [1]
     eta_min: !!float 1e-7
 
-  total_iter: 300000
+  total_iter: 100000
   warmup_iter: -1  # no warm up
   fix_flow: 5000
-  flow_lr_mul: 0.125
+  flow_lr_mul: 0.25
 
   # losses
   pixel_opt:
@@ -98,11 +91,11 @@ val:
     psnr: # metric name, can be arbitrary
       type: calculate_psnr
       crop_border: 0
-      test_y_channel: true
+      test_y_channel: false
 
 # logging settings
 logger:
-  print_freq: 100
+  print_freq: 200
   save_checkpoint_freq: !!float 5e3
   use_tb_logger: true
   wandb:
@@ -112,6 +105,6 @@ logger:
 # dist training settings
 dist_params:
   backend: nccl
-  port: 4321
+  port: 29500
 
 find_unused_parameters: true
