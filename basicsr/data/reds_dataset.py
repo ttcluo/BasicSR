@@ -466,11 +466,11 @@ class RealVSRRecurrentDataset(data.Dataset):
         img_gts = []
         for neighbor in neighbor_list:
             if self.is_lmdb:
-                img_lq_path = f'{clip_name}/{neighbor:08d}'
-                img_gt_path = f'{clip_name}/{neighbor:08d}'
+                img_lq_path = f'{clip_name}/{neighbor:05d}'
+                img_gt_path = f'{clip_name}/{neighbor:05d}'
             else:
-                img_lq_path = self.lq_root / clip_name / f'{neighbor:08d}.png'
-                img_gt_path = self.gt_root / clip_name / f'{neighbor:08d}.png'
+                img_lq_path = self.lq_root / clip_name / f'{neighbor:05d}.png'
+                img_gt_path = self.gt_root / clip_name / f'{neighbor:05d}.png'
 
             # get LQ
             img_bytes = self.file_client.get(img_lq_path, 'lq')
