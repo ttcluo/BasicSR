@@ -66,7 +66,7 @@ class VideoTestDataset(data.Dataset):
             subfolders_lq = sorted(glob.glob(osp.join(self.lq_root, '*')))
             subfolders_gt = sorted(glob.glob(osp.join(self.gt_root, '*')))
 
-        if opt['name'].lower() in ['vid4', 'reds4', 'redsofficial']:
+        if opt['name'].lower() in ['vid4', 'reds4', 'redsofficial','reals50']:
             for subfolder_lq, subfolder_gt in zip(subfolders_lq, subfolders_gt):
                 # get frame list for lq and gt
                 subfolder_name = osp.basename(subfolder_lq)
