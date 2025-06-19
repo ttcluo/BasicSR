@@ -59,7 +59,7 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: experiments/CIBRN_REDS_REDS4_b8_5f_new/models/net_g_185000.pth
+  pretrain_network_g: #experiments/CIBRN_REDS_REDS4_b8_5f_new/models/net_g_185000.pth
   strict_load_g: false
   resume_state: #experiments/CIBRN_2e-4_REAL_BI_x4/training_states/315000.state
 
@@ -103,7 +103,7 @@ val:
     psnr: # metric name, can be arbitrary
       type: calculate_psnr
       crop_border: 0
-      test_y_channel: false
+      test_y_channel: true
 
 # logging settings
 logger:
