@@ -74,9 +74,9 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: experiments/CIBRN_REDS_REDS4_b8_5f_new/models/net_g_165000.pth
+  pretrain_network_g: #experiments/CIBRN_REDS_REDS4_b8_5f_new/models/net_g_165000.pth
   strict_load_g: false
-  resume_state: #experiments/CIBRN_2e-4_300k_b1/training_states/200000.state
+  resume_state: experiments/CIBRN_Vimeo90k_b6/training_states/5000.state
 
 # training settings
 train:
