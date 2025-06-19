@@ -1,5 +1,5 @@
 # general settings
-name: CIBRN_REAL_GT_b8_new
+name: CIBRN_REAL_GT_b8_new2
 experiments_root: exp_video_real
 model_type: VideoRecurrentModel  # BasicVSRModel BasicVSRGanModel
 scale: 1
@@ -59,7 +59,7 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: #experiments/CIBRN_REAL_GT_pre_archived_20250612_210045/models/net_g_5000.pth
+  pretrain_network_g: experiments/CIBRN_REAL_GT_b8_new/models/net_g_85000.pth
   strict_load_g: true
   resume_state: #experiments/CIBRN_2e-4_REAL_BI_x4/training_states/315000.state
 
