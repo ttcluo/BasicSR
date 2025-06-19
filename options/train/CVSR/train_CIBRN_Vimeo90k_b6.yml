@@ -82,7 +82,7 @@ path:
 train:
   optim_g:
     type: Adam
-    lr: !!float 4e-6
+    lr: !!float 2e-4
     weight_decay: 0
     betas: [0.9, 0.99]
 
