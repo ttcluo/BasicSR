@@ -1,5 +1,5 @@
 # general settings
-name: CIBRN_2e-4_300k_b1
+name: CIBRN_g3_b2
 # experiments_root: exp_video2/vimeo90k_retrain2
 model_type: BasicVSRModel
 scale: 4
@@ -37,10 +37,11 @@ datasets:
 
   val:
     name: Vid4
-    type: VidTestDataset #原VidTestDataset
+    type: VideoRecurrentTestDataset
     dataroot_gt: ../vsr_dataset/Vid4/GT
     dataroot_lq: ../vsr_dataset/Vid4/BIx4
-    cache_data: True
+
+    cache_data: true
     io_backend:
       type: disk
 
@@ -73,9 +74,9 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: #exp_video2/vimeo90k_retrain2/BasicVSR_V4_1e-6_100k_b6_stage4/models/net_g_100000.pth #exp_video2/V4_4e-4_REDS_BI_x4/models/net_g_235000.pth
+  pretrain_network_g: experiments/CIBRN_REDS_REDS4_b8_5f_new/models/net_g_165000.pth
   strict_load_g: false
-  resume_state: experiments/CIBRN_2e-4_300k_b1/training_states/200000.state
+  resume_state: #experiments/CIBRN_2e-4_300k_b1/training_states/200000.state
 
 # training settings
 train:
