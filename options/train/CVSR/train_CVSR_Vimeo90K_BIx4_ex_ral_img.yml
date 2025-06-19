@@ -51,7 +51,7 @@ datasets:
 
 # network structures
 network_g:
-  type: CVSR
+  type: CVSRexRI
   num_feat: 64
   num_block: 30
   spynet_path: experiments/pretrained_models/flownet/spynet_sintel_final-3d2a1287.pth
