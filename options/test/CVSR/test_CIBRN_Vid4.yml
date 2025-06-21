@@ -1,4 +1,4 @@
-name: TestCVSR_Vid4
+name: CIBRN_Vid4_test
 model_type: VideoRecurrentModel
 scale: 4
 num_gpu: 1  # set num_gpu: 0 for cpu mode
