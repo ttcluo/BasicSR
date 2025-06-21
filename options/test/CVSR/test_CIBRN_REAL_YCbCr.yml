@@ -47,6 +47,8 @@ path:
 val:
   # val_freq: !!float 5e3
   save_img: true
+  flip_seq: false
+  center_frame_only: false
   suffix: ~  # add suffix to saved images, if None, use exp name
 
   metrics:
