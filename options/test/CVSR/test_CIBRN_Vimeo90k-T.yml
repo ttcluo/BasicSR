@@ -29,7 +29,7 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: experiments/CIBRN_Vimeo90k_b6/models/net_g_80000.pth
+  pretrain_network_g: experiments/CIBRN_Vimeo90k_b6/models/net_g_100000.pth
   strict_load_g: true
 
 # validation settings
