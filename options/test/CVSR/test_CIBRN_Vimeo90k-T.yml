@@ -34,7 +34,7 @@ path:
 
 # validation settings
 val:
-  save_img: true
+  save_img: false
   suffix: ~  # add suffix to saved images, if None, use exp name
 
   metrics:
