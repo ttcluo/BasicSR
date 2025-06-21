@@ -14,6 +14,8 @@ datasets:
     dataroot_gt: ../vsr_dataset/RealVSR/GT_YCbCr_test
     dataroot_lq: ../vsr_dataset/RealVSR/LQ_YCbCr_test
     meta_info_file: ../vsr_dataset/RealVSR/meta_info_REAL_test_GT.txt
+    val_partition: REALS50  # set to 'official' when use the official validation partition
+    test_mode: true
     io_backend:
       type: disk
 
