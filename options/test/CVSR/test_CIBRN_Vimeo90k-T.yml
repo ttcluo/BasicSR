@@ -14,7 +14,7 @@ datasets:
     meta_info_file: ../vsr_dataset/vimeo90k/meta_info_Vimeo90K_test_GT.txt
     io_backend:
       type: disk
-    cache_data: True
+    cache_data: false
     num_frame: 7
 
 
