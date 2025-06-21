@@ -24,7 +24,8 @@ network_g:
   num_feat: 64
   extract_block: 12
   num_block: 30
-  spynet_path: experiments/pretrained_models/flownet/spynet_sintel_final-3d2a1287.pth
+  resType: ResidualBlock_CA
+  use_deblur: true
 
 # path
 path:
