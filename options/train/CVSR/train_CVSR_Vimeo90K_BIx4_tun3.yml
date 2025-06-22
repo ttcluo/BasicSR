@@ -3,7 +3,7 @@
 # train.py
 
 # general settings
-name: CVSR_Vimeo90K_BIx4_tun
+name: CVSR_Vimeo90K_BIx4_tun3
 model_type: VideoRecurrentModel
 scale: 4
 num_gpu: 1  # set num_gpu: 0 for cpu mode
