@@ -22,7 +22,7 @@ class IBRNNet(nn.Module):
             Default: None.
     """
     def __init__(self, num_feat=64, extract_block=12, num_block=30, resType="ResidualBlockNoBN", use_deblur=False, upscale=4):
-        super(BasicVSR_V4, self).__init__()
+        super(IBRNNet, self).__init__()
         self.num_feat = num_feat
         self.num_block = num_block
         self.use_deblur = use_deblur
