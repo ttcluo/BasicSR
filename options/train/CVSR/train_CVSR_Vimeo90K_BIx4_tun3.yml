@@ -58,7 +58,7 @@ network_g:
 
 # path
 path:
-  pretrain_network_g: experiments/CVSR_Vimeo90K_BIx4_tun/models/net_g_55000.pth
+  pretrain_network_g: experiments/CVSR_Vimeo90K_BIx4_tun_archived_20250622_124603/models/net_g_55000.pth
   strict_load_g: true
   resume_state: #experiments/CVSR_Vimeo90K_BIx4_tun/training_states/80000.state
 
