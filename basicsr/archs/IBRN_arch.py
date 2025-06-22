@@ -221,8 +221,19 @@ class PSUpsample(nn.Module):
 
 
 if __name__ == '__main__':
-    model = IBRNNet()
-    lrs = torch.randn(3, 4, 3, 64, 64)
-    rlt = model(lrs)
-    print(rlt.size())
+    # model = IBRNNet()
+    # lrs = torch.randn(3, 4, 3, 64, 64)
+    # rlt = model(lrs)
+    # print(rlt.size())
+
+    input = torch.rand(3, 4, 3, 64, 64).cuda()  # B T C H W
+    model = IBRNNet().cuda()
+
+    # FLOPs and Parameters
+    flops, params = profile(model, inputs=(input,))
+    logger = get_root_logger()
+    logger.info("Param: {} M".format(params/1e6))
+    logger.info("FLOPs: {} G".format(flops/1e9))
+    print("Param: {} M".format(params/1e6))
+    print("FLOPs: {} G".format(flops/1e9))
 
