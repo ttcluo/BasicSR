@@ -16,6 +16,7 @@ except ImportError:
     profile = None
     print('Warning: "thop" is not installed, FLOPs can not be calculated.')
 
+
 class BaseModel():
     """Base model."""
 
@@ -98,11 +99,23 @@ class BaseModel():
             net (nn.Module)
         """
         net = net.to(self.device)
-        if self.opt['dist']:
-            find_unused_parameters = self.opt.get('find_unused_parameters', False)
-            net = DistributedDataParallel(
-                net, device_ids=[torch.cuda.current_device()], find_unused_parameters=find_unused_parameters)
-        elif self.opt['num_gpu'] > 1:
+        if self.opt['dist']: # if distributed training is enabled in config
+            if self.device.type == 'cuda': # Only use DDP if the device is CUDA
+                find_unused_parameters = self.opt.get('find_unused_parameters', False)
+                net = DistributedDataParallel(
+                    net, device_ids=[torch.cuda.current_device()], find_unused_parameters=find_unused_parameters)
+            else: # self.device.type is 'cpu' and opt['dist'] is True
+                logger = get_root_logger()
+                logger.warning(
+                    'Distributed training is enabled (opt["dist"]=True) but no CUDA device is available or '
+                    'opt["num_gpu"] is 0. Falling back to non-distributed CPU execution. '
+                    'If you intend distributed CPU training, ensure torch.distributed.init_process_group '
+                    'is properly configured with a CPU backend (e.g., "gloo").'
+                )
+                # In this case, we do NOT wrap with DistributedDataParallel
+                # as it expects a backend and GPU device_ids are problematic for CPU.
+                # The model is already on CPU.
+        elif self.opt['num_gpu'] > 1: # For DataParallel (multi-GPU, non-distributed)
             net = DataParallel(net)
         return net
 
@@ -149,6 +162,8 @@ class BaseModel():
     @master_only
     def print_network(self, net):
         """Print the str and parameter number of a network.
+        Also calculates and prints FLOPs if 'thop' is installed and
+        'input_shape' is provided in the opt configuration.
 
         Args:
             net (nn.Module)
@@ -311,70 +326,6 @@ class BaseModel():
                     logger.warning(f'Size different, ignore [{k}]: crt_net: '
                                    f'{crt_net.state_dict()[k].shape}; load_net: {load_net[k].shape}')
                     load_net[k + '.ignore'] = load_net.pop(k)
-
-
-    # def _print_different_keys_loading(self, crt_net, load_net, strict=True):
-    #     """Print keys with different name or different size when loading models.
-
-    #     1. Print keys with different names.
-    #     2. If strict=False, print the same key but with different tensor size.
-    #         It also ignore these keys with different sizes (not load).
-
-    #     Args:
-    #         crt_net (torch model): Current network.
-    #         load_net (dict): Loaded network.
-    #         strict (bool): Whether strictly loaded. Default: True.
-    #     """
-    #     crt_net = self.get_bare_model(crt_net)
-    #     crt_net = crt_net.state_dict()
-    #     crt_net_keys = set(crt_net.keys())
-    #     load_net_keys = set(load_net.keys())
-
-    #     logger = get_root_logger()
-    #     if crt_net_keys != load_net_keys:
-    #         logger.warning('Current net - loaded net:')
-    #         for v in sorted(list(crt_net_keys - load_net_keys)):
-    #             logger.warning(f'  {v}')
-    #         logger.warning('Loaded net - current net:')
-    #         for v in sorted(list(load_net_keys - crt_net_keys)):
-    #             logger.warning(f'  {v}')
-
-    #     # check the size for the same keys
-    #     if not strict:
-    #         common_keys = crt_net_keys & load_net_keys
-    #         for k in common_keys:
-    #             if crt_net[k].size() != load_net[k].size():
-    #                 logger.warning(f'Size different, ignore [{k}]: crt_net: '
-    #                                f'{crt_net[k].shape}; load_net: {load_net[k].shape}')
-    #                 load_net[k + '.ignore'] = load_net.pop(k)
-
-    # def load_network(self, net, load_path, strict=True, param_key='params'):
-    #     """Load network.
-
-    #     Args:
-    #         load_path (str): The path of networks to be loaded.
-    #         net (nn.Module): Network.
-    #         strict (bool): Whether strictly loaded.
-    #         param_key (str): The parameter key of loaded network. If set to
-    #             None, use the root 'path'.
-    #             Default: 'params'.
-    #     """
-    #     logger = get_root_logger()
-    #     net = self.get_bare_model(net)
-    #     load_net = torch.load(load_path, map_location=lambda storage, loc: storage)
-    #     if param_key is not None:
-    #         if param_key not in load_net and 'params' in load_net:
-    #             param_key = 'params'
-    #             logger.info('Loading: params_ema does not exist, use params.')
-    #         load_net = load_net[param_key]
-    #     logger.info(f'Loading {net.__class__.__name__} model from {load_path}, with param key: [{param_key}].')
-    #     # remove unnecessary 'module.'
-    #     for k, v in deepcopy(load_net).items():
-    #         if k.startswith('module.'):
-    #             load_net[k[7:]] = v
-    #             load_net.pop(k)
-    #     self._print_different_keys_loading(net, load_net, strict)
-    #     net.load_state_dict(load_net, strict=strict)
 
     def load_network(self, net, load_path, strict=True, param_key='params'):
         """Load network.
