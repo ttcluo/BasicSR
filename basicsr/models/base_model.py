@@ -9,6 +9,12 @@ from basicsr.models import lr_scheduler as lr_scheduler
 from basicsr.utils import get_root_logger
 from basicsr.utils.dist_util import master_only
 
+# 导入 thop 库
+try:
+    from thop import profile
+except ImportError:
+    profile = None
+    print('Warning: "thop" is not installed, FLOPs can not be calculated.')
 
 class BaseModel():
     """Base model."""
@@ -158,6 +164,27 @@ class BaseModel():
 
         logger = get_root_logger()
         logger.info(f'Network: {net_cls_str}, with parameters: {net_params:,d}')
+
+        # 增加 FLOPs 计算
+        if profile is not None and self.opt.get('val', {}).get('input_shape') is not None:
+            # 假设输入是 [batch_size, channels, height, width]
+            # 这里需要根据你的模型实际输入形状进行调整
+            input_shape = self.opt['val']['input_shape']
+            # 将输入形状转换为模型可以接受的张量
+            dummy_input = torch.rand(*input_shape).to(self.device)
+            try:
+                # 重新将模型设置为评估模式，以确保 dropout 等层不会影响 FLOPs 计算
+                net.eval()
+                flops, params = profile(net, inputs=(dummy_input,), verbose=False)
+                logger.info(f'FLOPs: {flops / 1e9:.2f} G, Params: {params / 1e6:.2f} M')
+                net.train() # 恢复训练模式
+            except Exception as e:
+                logger.warning(f"Failed to calculate FLOPs: {e}. Please check your model's forward method or input_shape.")
+        elif profile is None:
+            logger.warning('FLOPs calculation skipped: "thop" is not installed. Please install it with `pip install thop`.')
+        elif self.opt.get('val', {}).get('input_shape') is None:
+            logger.warning('FLOPs calculation skipped: "input_shape" is not specified in the opt configuration (e.g., opt["val"]["input_shape"]).')
+
         logger.info(net_str)
 
     def _set_lr(self, lr_groups_l):

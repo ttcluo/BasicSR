@@ -44,3 +44,5 @@ val:
       type: calculate_ssim
       crop_border: 0
       test_y_channel: true
+
+  input_shape: [1, 5, 3, 144, 180] # [batch_size, num_frames, channels, height, width] For FLOPs
