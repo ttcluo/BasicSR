@@ -284,9 +284,6 @@ class BaseModel():
         1. Print keys with different names.
         2. If strict=False, print the same key but with different tensor size.
             It also ignore these keys with different sizes (not load).
-        3. Additionally, ignores 'total_ops' and 'total_params' keys, which are
-           added by profiling tools like 'thop', if they are missing in the
-           loaded state_dict but present in the current network.
 
         Args:
             crt_net (torch model): Current network.
@@ -294,41 +291,25 @@ class BaseModel():
             strict (bool): Whether strictly loaded. Default: True.
         """
         crt_net = self.get_bare_model(crt_net)
-        crt_net_state_dict = crt_net.state_dict()
-        crt_net_keys = set(crt_net_state_dict.keys())
+        crt_net_keys = set(crt_net.state_dict().keys())
         load_net_keys = set(load_net.keys())
 
         logger = get_root_logger()
-
-        # Keys in current net but not in loaded net
-        missing_keys_in_load = sorted(list(crt_net_keys - load_net_keys))
-        # Keys in loaded net but not in current net
-        unexpected_keys_in_load = sorted(list(load_net_keys - crt_net_keys))
-
-        # Filter out 'total_ops' and 'total_params' if they are missing in load_net
-        # and are expected by current_net (due to thop hooks)
-        thop_keys_to_ignore = [k for k in missing_keys_in_load if 'total_ops' in k or 'total_params' in k]
-        for k in thop_keys_to_ignore:
-            missing_keys_in_load.remove(k)
-            logger.info(f"Ignoring missing key (likely from thop): {k}")
-
-
-        if missing_keys_in_load:
-            logger.warning('Current net - loaded net (missing keys):')
-            for v in missing_keys_in_load:
+        if crt_net_keys != load_net_keys:
+            logger.warning('Current net - loaded net:')
+            for v in sorted(list(crt_net_keys - load_net_keys)):
                 logger.warning(f'  {v}')
-        if unexpected_keys_in_load:
-            logger.warning('Loaded net - current net (unexpected keys):')
-            for v in unexpected_keys_in_load:
+            logger.warning('Loaded net - current net:')
+            for v in sorted(list(load_net_keys - crt_net_keys)):
                 logger.warning(f'  {v}')
 
         # check the size for the same keys
         if not strict:
             common_keys = crt_net_keys & load_net_keys
             for k in common_keys:
-                if crt_net_state_dict[k].size() != load_net[k].size():
+                if crt_net.state_dict()[k].size() != load_net[k].size():
                     logger.warning(f'Size different, ignore [{k}]: crt_net: '
-                                   f'{crt_net_state_dict[k].shape}; load_net: {load_net[k].shape}')
+                                   f'{crt_net.state_dict()[k].shape}; load_net: {load_net[k].shape}')
                     load_net[k + '.ignore'] = load_net.pop(k)
 
 
@@ -367,6 +348,34 @@ class BaseModel():
     #                                f'{crt_net[k].shape}; load_net: {load_net[k].shape}')
     #                 load_net[k + '.ignore'] = load_net.pop(k)
 
+    # def load_network(self, net, load_path, strict=True, param_key='params'):
+    #     """Load network.
+
+    #     Args:
+    #         load_path (str): The path of networks to be loaded.
+    #         net (nn.Module): Network.
+    #         strict (bool): Whether strictly loaded.
+    #         param_key (str): The parameter key of loaded network. If set to
+    #             None, use the root 'path'.
+    #             Default: 'params'.
+    #     """
+    #     logger = get_root_logger()
+    #     net = self.get_bare_model(net)
+    #     load_net = torch.load(load_path, map_location=lambda storage, loc: storage)
+    #     if param_key is not None:
+    #         if param_key not in load_net and 'params' in load_net:
+    #             param_key = 'params'
+    #             logger.info('Loading: params_ema does not exist, use params.')
+    #         load_net = load_net[param_key]
+    #     logger.info(f'Loading {net.__class__.__name__} model from {load_path}, with param key: [{param_key}].')
+    #     # remove unnecessary 'module.'
+    #     for k, v in deepcopy(load_net).items():
+    #         if k.startswith('module.'):
+    #             load_net[k[7:]] = v
+    #             load_net.pop(k)
+    #     self._print_different_keys_loading(net, load_net, strict)
+    #     net.load_state_dict(load_net, strict=strict)
+
     def load_network(self, net, load_path, strict=True, param_key='params'):
         """Load network.
 
@@ -392,8 +401,34 @@ class BaseModel():
             if k.startswith('module.'):
                 load_net[k[7:]] = v
                 load_net.pop(k)
-        self._print_different_keys_loading(net, load_net, strict)
-        net.load_state_dict(load_net, strict=strict)
+
+        # --- 新增的修改 ---
+        # 检查当前网络和加载的网络状态字典的键
+        crt_net_keys = set(net.state_dict().keys())
+        load_net_keys = set(load_net.keys())
+
+        # 找出当前网络有，但加载网络没有的键
+        missing_in_load = crt_net_keys - load_net_keys
+
+        # 如果严格加载 (strict=True) 且缺失的键中包含 'total_ops' 或 'total_params'，
+        # 则将 strict 设置为 False，并发出警告。
+        # 这样可以忽略 thop 添加的这些缓冲区键。
+        should_relax_strict = False
+        for key in missing_in_load:
+            if 'total_ops' in key or 'total_params' in key:
+                should_relax_strict = True
+                break
+
+        if strict and should_relax_strict:
+            logger.warning(
+                'Detected missing "total_ops" or "total_params" keys (likely from thop). '
+                'Loading with strict=False to ignore these buffers.'
+            )
+            strict = False
+        # --- 修改结束 ---
+
+        self._print_different_keys_loading(net, load_net, strict) # 保持原有的日志打印
+        net.load_state_dict(load_net, strict=strict) # 使用可能被修改的 strict 值
 
     @master_only
     def save_training_state(self, epoch, current_iter):
