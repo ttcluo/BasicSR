@@ -9,13 +9,6 @@ from basicsr.models import lr_scheduler as lr_scheduler
 from basicsr.utils import get_root_logger
 from basicsr.utils.dist_util import master_only
 
-# 导入 thop 库
-try:
-    from thop import profile
-except ImportError:
-    profile = None
-    print('Warning: "thop" is not installed, FLOPs can not be calculated.')
-
 
 class BaseModel():
     """Base model."""
@@ -99,23 +92,11 @@ class BaseModel():
             net (nn.Module)
         """
         net = net.to(self.device)
-        if self.opt['dist']: # if distributed training is enabled in config
-            if self.device.type == 'cuda': # Only use DDP if the device is CUDA
-                find_unused_parameters = self.opt.get('find_unused_parameters', False)
-                net = DistributedDataParallel(
-                    net, device_ids=[torch.cuda.current_device()], find_unused_parameters=find_unused_parameters)
-            else: # self.device.type is 'cpu' and opt['dist'] is True
-                logger = get_root_logger()
-                logger.warning(
-                    'Distributed training is enabled (opt["dist"]=True) but no CUDA device is available or '
-                    'opt["num_gpu"] is 0. Falling back to non-distributed CPU execution. '
-                    'If you intend distributed CPU training, ensure torch.distributed.init_process_group '
-                    'is properly configured with a CPU backend (e.g., "gloo").'
-                )
-                # In this case, we do NOT wrap with DistributedDataParallel
-                # as it expects a backend and GPU device_ids are problematic for CPU.
-                # The model is already on CPU.
-        elif self.opt['num_gpu'] > 1: # For DataParallel (multi-GPU, non-distributed)
+        if self.opt['dist']:
+            find_unused_parameters = self.opt.get('find_unused_parameters', False)
+            net = DistributedDataParallel(
+                net, device_ids=[torch.cuda.current_device()], find_unused_parameters=find_unused_parameters)
+        elif self.opt['num_gpu'] > 1:
             net = DataParallel(net)
         return net
 
@@ -162,8 +143,6 @@ class BaseModel():
     @master_only
     def print_network(self, net):
         """Print the str and parameter number of a network.
-        Also calculates and prints FLOPs if 'thop' is installed and
-        'input_shape' is provided in the opt configuration.
 
         Args:
             net (nn.Module)
@@ -179,27 +158,6 @@ class BaseModel():
 
         logger = get_root_logger()
         logger.info(f'Network: {net_cls_str}, with parameters: {net_params:,d}')
-
-        # 增加 FLOPs 计算
-        if profile is not None and self.opt.get('val', {}).get('input_shape') is not None:
-            # 假设输入是 [batch_size, channels, height, width]
-            # 这里需要根据你的模型实际输入形状进行调整
-            input_shape = self.opt['val']['input_shape']
-            # 将输入形状转换为模型可以接受的张量
-            dummy_input = torch.rand(*input_shape).to(self.device)
-            try:
-                # 重新将模型设置为评估模式，以确保 dropout 等层不会影响 FLOPs 计算
-                net.eval()
-                flops, params = profile(net, inputs=(dummy_input,), verbose=False)
-                logger.info(f'FLOPs: {flops / 1e9:.2f} G, Params: {params / 1e6:.2f} M')
-                net.train() # 恢复训练模式
-            except Exception as e:
-                logger.warning(f"Failed to calculate FLOPs: {e}. Please check your model's forward method or input_shape.")
-        elif profile is None:
-            logger.warning('FLOPs calculation skipped: "thop" is not installed. Please install it with `pip install thop`.')
-        elif self.opt.get('val', {}).get('input_shape') is None:
-            logger.warning('FLOPs calculation skipped: "input_shape" is not specified in the opt configuration (e.g., opt["val"]["input_shape"]).')
-
         logger.info(net_str)
 
     def _set_lr(self, lr_groups_l):
@@ -306,7 +264,8 @@ class BaseModel():
             strict (bool): Whether strictly loaded. Default: True.
         """
         crt_net = self.get_bare_model(crt_net)
-        crt_net_keys = set(crt_net.state_dict().keys())
+        crt_net = crt_net.state_dict()
+        crt_net_keys = set(crt_net.keys())
         load_net_keys = set(load_net.keys())
 
         logger = get_root_logger()
@@ -322,9 +281,9 @@ class BaseModel():
         if not strict:
             common_keys = crt_net_keys & load_net_keys
             for k in common_keys:
-                if crt_net.state_dict()[k].size() != load_net[k].size():
+                if crt_net[k].size() != load_net[k].size():
                     logger.warning(f'Size different, ignore [{k}]: crt_net: '
-                                   f'{crt_net.state_dict()[k].shape}; load_net: {load_net[k].shape}')
+                                   f'{crt_net[k].shape}; load_net: {load_net[k].shape}')
                     load_net[k + '.ignore'] = load_net.pop(k)
 
     def load_network(self, net, load_path, strict=True, param_key='params'):
@@ -352,34 +311,8 @@ class BaseModel():
             if k.startswith('module.'):
                 load_net[k[7:]] = v
                 load_net.pop(k)
-
-        # --- 新增的修改 ---
-        # 检查当前网络和加载的网络状态字典的键
-        crt_net_keys = set(net.state_dict().keys())
-        load_net_keys = set(load_net.keys())
-
-        # 找出当前网络有，但加载网络没有的键
-        missing_in_load = crt_net_keys - load_net_keys
-
-        # 如果严格加载 (strict=True) 且缺失的键中包含 'total_ops' 或 'total_params'，
-        # 则将 strict 设置为 False，并发出警告。
-        # 这样可以忽略 thop 添加的这些缓冲区键。
-        should_relax_strict = False
-        for key in missing_in_load:
-            if 'total_ops' in key or 'total_params' in key:
-                should_relax_strict = True
-                break
-
-        if strict and should_relax_strict:
-            logger.warning(
-                'Detected missing "total_ops" or "total_params" keys (likely from thop). '
-                'Loading with strict=False to ignore these buffers.'
-            )
-            strict = False
-        # --- 修改结束 ---
-
-        self._print_different_keys_loading(net, load_net, strict) # 保持原有的日志打印
-        net.load_state_dict(load_net, strict=strict) # 使用可能被修改的 strict 值
+        self._print_different_keys_loading(net, load_net, strict)
+        net.load_state_dict(load_net, strict=strict)
 
     @master_only
     def save_training_state(self, epoch, current_iter):
