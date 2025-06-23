@@ -114,7 +114,7 @@ if kvsr_psnrs:
                color='#ff7f0e', alpha=0.6)
 
 # 设置图表属性
-plt.title('PSNR on Vid4 Test Set\n(Trained on Vimeo90K)',
+plt.title('PSNR on Vid4 Test Set (Trained on Vimeo90K)',
           fontsize=16, pad=15)
 plt.xlabel('Training Iteration', fontsize=14)
 plt.ylabel('PSNR (dB)', fontsize=14)
